@@ -12,10 +12,97 @@
 // verifyFunction
 #include "llvm/IR/Verifier.h"
 
+// for jit support
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/ExecutionEngine/JITSymbol.h"
+#include "llvm/ExecutionEngine/Orc/CompileUtils.h"
+#include "llvm/ExecutionEngine/Orc/Core.h"
+#include "llvm/ExecutionEngine/Orc/ExecutionUtils.h"
+#include "llvm/ExecutionEngine/Orc/ExecutorProcessControl.h"
+#include "llvm/ExecutionEngine/Orc/IRCompileLayer.h"
+#include "llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h"
+#include "llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h"
+#include "llvm/ExecutionEngine/Orc/Shared/ExecutorSymbolDef.h"
+#include "llvm/ExecutionEngine/SectionMemoryManager.h"
+
+#include "llvm/IR/LegacyPassManager.h"
+
 //llvm #include "llvm/IR/LLVMContext.h"
 
 //using namespace llvm;
+//using namespace llvm::orc;
 // clang++-16 -I ~/dev/0.my/play_llvm_x86_linux_install/include toy.cpp -o toy
+static llvm::ExitOnError ExitOnErr;
+
+
+class KaleidoscopeJIT {
+private:
+  std::unique_ptr<llvm::orc::ExecutionSession> ES;
+
+  llvm::DataLayout DL;
+  llvm::orc:: MangleAndInterner Mangle;
+
+  llvm::orc::RTDyldObjectLinkingLayer ObjectLayer;
+  llvm::orc::IRCompileLayer CompileLayer;
+
+  llvm::orc::JITDylib &MainJD;
+
+public:
+  KaleidoscopeJIT(std::unique_ptr<llvm::orc::ExecutionSession> ES,
+                  llvm::orc::JITTargetMachineBuilder JTMB, llvm::DataLayout DL)
+      : ES(std::move(ES)), DL(std::move(DL)), Mangle(*this->ES, this->DL),
+        ObjectLayer(*this->ES,
+                    []() { return std::make_unique<llvm::SectionMemoryManager>(); }),
+        CompileLayer(*this->ES, ObjectLayer,
+                     std::make_unique<llvm::orc::ConcurrentIRCompiler>(std::move(JTMB))),
+        MainJD(this->ES->createBareJITDylib("<main>")) {
+    MainJD.addGenerator(
+        cantFail(llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
+            DL.getGlobalPrefix())));
+    if (JTMB.getTargetTriple().isOSBinFormatCOFF()) {
+      ObjectLayer.setOverrideObjectFlagsWithResponsibilityFlags(true);
+      ObjectLayer.setAutoClaimResponsibilityForObjectSymbols(true);
+    }
+  }
+
+  ~KaleidoscopeJIT() {
+    if (auto Err = ES->endSession())
+      ES->reportError(std::move(Err));
+  }
+
+  static llvm::Expected<std::unique_ptr<KaleidoscopeJIT>> Create() {
+    auto EPC = llvm::orc::SelfExecutorProcessControl::Create();
+    if (!EPC)
+      return EPC.takeError();
+
+    auto ES = std::make_unique<llvm::orc::ExecutionSession>(std::move(*EPC));
+
+    llvm::orc::JITTargetMachineBuilder JTMB(
+        ES->getExecutorProcessControl().getTargetTriple());
+
+    auto DL = JTMB.getDefaultDataLayoutForTarget();
+    if (!DL)
+      return DL.takeError();
+
+    return std::make_unique<KaleidoscopeJIT>(std::move(ES), std::move(JTMB),
+                                             std::move(*DL));
+  }
+
+  const llvm::DataLayout &getDataLayout() const { return DL; }
+
+  llvm::orc::JITDylib &getMainJITDylib() { return MainJD; }
+
+  llvm::Error addModule(llvm::orc::ThreadSafeModule TSM, llvm::orc::ResourceTrackerSP RT = nullptr) {
+    if (!RT)
+      RT = MainJD.getDefaultResourceTracker();
+    return CompileLayer.add(RT, std::move(TSM));
+  }
+
+  ;llvm::Expected<llvm::orc::ExecutorSymbolDef> lookup(llvm::StringRef Name) {
+    return ES->lookup({&MainJD}, Mangle(Name.str()));
+  }
+};
+
 
 enum Token_Type {
     tok_eof = -1,
@@ -143,12 +230,15 @@ static std::unique_ptr<llvm::LLVMContext> TheContext; // contains all the states
 static std::unique_ptr<llvm::Module> TheModule; // contains functions and global variables
 static std::unique_ptr<llvm::IRBuilder<>> Builder; // ir build keeps track of the current location for inserting new instructions
 static std::map<std::string, llvm::Value*> Named_Values;
+
+static std::unique_ptr<KaleidoscopeJIT> TheJIT; // for jit support
+
  // keeps track of which values are defined in the current scope
 static void InitializeModule() {
     // Open a new context and module.
     TheContext = std::make_unique<llvm::LLVMContext>();
-    TheModule = std::make_unique<llvm::Module>("my toy", *TheContext);
-
+    TheModule = std::make_unique<llvm::Module>("my jit toy", *TheContext);
+    TheModule->setDataLayout(TheJIT->getDataLayout());// getTargetMachine().createDataLayout());
   // Create a new builder for the module.
   Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);
 }
@@ -406,7 +496,26 @@ static void Handle_Extern() {
 
 static void Handle_Top_Level_Expression() {
     if (auto F = Parse_Top_Level()) {
-        if (auto LF = F->Codegen()) {}
+        if (auto LF = F->Codegen()) {
+            // for jit support
+            auto RT = TheJIT->getMainJITDylib().createResourceTracker();
+            auto TSM = llvm::orc::ThreadSafeModule(std::move(TheModule), std::move(TheContext));
+            ExitOnErr(TheJIT->addModule(std::move(TSM), RT));
+            InitializeModule();
+            
+            // Search the JIT for the __anon_expr symbol. which is root
+            auto ExprSymbol = ExitOnErr(TheJIT->lookup("__anon_expr"));
+            //assert(ExprSymbol && "Function not found");
+
+            // Get the symbol's address and cast it to the right type (takes no
+            // arguments, returns a double) so we can call it as a native function.
+            int (*FP)() = ExprSymbol.getAddress().toPtr<int (*)()>();
+            fprintf(stderr, "Evaluated to %d\n", FP());
+
+            // Delete the anonymous expression module from the JIT.
+            ExitOnErr(RT->remove());
+
+        }
     } else {
         getNextToken();
     }
@@ -448,9 +557,14 @@ static void Driver() {
 //llvm  Module *Module_Ob;
 
 int main(int argc, char** argv) {
+    // select the target // jit need target selection
+    llvm::InitializeNativeTarget();
+    llvm::InitializeNativeTargetAsmPrinter();
+    llvm::InitializeNativeTargetAsmParser();
+    TheJIT = ExitOnErr(KaleidoscopeJIT::Create());;
     InitializeModule();
     //llvm  LLVMContextRef Context = LLVMGetGlobalContext();
-    file = fopen("/home/yoon/dev/0.my/my_toy/toy_front/example", "r"); //fopen(argv[1], "r");
+    file = fopen("/home/yoon/dev/0.my/my_toy/toy_jit/example", "r"); //fopen(argv[1], "r");
     if (file == NULL) {
         fprintf(stderr, "Can't open file\n");
         return 1;
