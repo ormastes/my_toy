@@ -448,7 +448,9 @@ static void Driver() {
 //llvm  Module *Module_Ob;
 
 int main(int argc, char** argv) {
-    InitializeModule();
+    TheJIT = std::make_unique<KaleidoscopeJIT>(); // it is not in InitializeModule() 
+    //becasue the InitializeModule() will be called again after codegen
+    InitializeModule(); // it will called again after codegen
     //llvm  LLVMContextRef Context = LLVMGetGlobalContext();
     file = fopen("/home/yoon/dev/0.my/my_toy/toy_front/example", "r"); //fopen(argv[1], "r");
     if (file == NULL) {
