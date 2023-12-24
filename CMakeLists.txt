@@ -6,3 +6,4 @@ set(CMAKE_CXX_STANDARD 20)
 
 add_subdirectory(toy_front)
 add_subdirectory(toy_jit)
+add_subdirectory(toy_pass)

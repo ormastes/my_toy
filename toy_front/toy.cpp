@@ -16,7 +16,7 @@
 
 //using namespace llvm;
 // clang++-16 -I ~/dev/0.my/play_llvm_x86_linux_install/include toy.cpp -o toy
-
+static llvm::ExitOnError ExitOnErr;
 enum Token_Type {
     tok_eof = -1,
     // commands
@@ -138,19 +138,38 @@ public:
     virtual llvm::Value *Codegen() override;
 };
 
+static std::map<std::string, std::unique_ptr<FunctionPrototypeAST>> FunctionProtos;
 
 static std::unique_ptr<llvm::LLVMContext> TheContext; // contains all the states global to the compiler
-static std::unique_ptr<llvm::Module> TheModule; // contains functions and global variables
+static std::unique_ptr<llvm::Module> TheModule{}; // contains functions and global variables //{} to ensure nullpt init
 static std::unique_ptr<llvm::IRBuilder<>> Builder; // ir build keeps track of the current location for inserting new instructions
 static std::map<std::string, llvm::Value*> Named_Values;
+static void  PrintModule() {
+    // Print out all of the generated code.
+    TheModule->print(llvm::errs(), nullptr);
+}
+llvm::Function *getFunction(std::string Name) {
+  // First, see if the function has already been added to the current module.
+  if (auto *F = TheModule->getFunction(Name))
+    return F;
+
+  // If not, check whether we can codegen the declaration from some existing
+  // prototype.
+  auto FI = FunctionProtos.find(Name);
+  if (FI != FunctionProtos.end())
+    return FI->second->Codegen();
+
+  // If no existing prototype exists, return null.
+  return nullptr;
+}
  // keeps track of which values are defined in the current scope
 static void InitializeModule() {
     // Open a new context and module.
     TheContext = std::make_unique<llvm::LLVMContext>();
     TheModule = std::make_unique<llvm::Module>("my toy", *TheContext);
 
-  // Create a new builder for the module.
-  Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);
+    // Create a new builder for the module.
+    Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);
 }
 
 llvm::Value * LogError(const char *text) {
@@ -207,8 +226,9 @@ llvm::Function *FunctionPrototypeAST::Codegen() {
 
 llvm::Function *FunctionImplAST::Codegen() {
     Named_Values.clear();
-    llvm::Function *TheFunction = TheModule->getFunction(Func_Decl->Func_name);
-    TheFunction = Func_Decl->Codegen();
+    auto &P = *Func_Decl;
+    FunctionProtos[Func_Decl->Func_name] = std::move(Func_Decl);
+    llvm::Function *TheFunction = getFunction(P.Func_name);
     if (TheFunction == 0) return 0;
 
     Named_Values.clear();
@@ -227,7 +247,7 @@ llvm::Function *FunctionImplAST::Codegen() {
 }
 
 llvm::Value *CallExprAST::Codegen() {
-    llvm::Function *CalleeF = TheModule->getFunction(Func_Callee);
+    llvm::Function *CalleeF = getFunction(Func_Callee);
     if (CalleeF == 0) return LogError("Unknown function referenced");
 
     if (CalleeF->arg_size() != Args.size()) return LogError("Incorrect # arguments passed");
@@ -398,7 +418,9 @@ static void Handle_Function_Definition() {
 
 static void Handle_Extern() {
     if (auto F = Parse_Function_Prototype()) {
-        if (auto LF = F->Codegen()) {}
+        if (auto LF = F->Codegen()) {
+            FunctionProtos[F->Func_name] = std::move(F);
+        }
     } else {
         getNextToken();
     }
@@ -459,8 +481,7 @@ int main(int argc, char** argv) {
     //Module_Ob = new Module("my cool jit", Context);
     Driver();
     
-    // Print out all of the generated code.
-    TheModule->print(llvm::errs(), nullptr);
+    PrintModule();
 
     return 0;
 }
