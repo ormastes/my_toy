@@ -1,0 +1,40 @@
+cmake_minimum_required(VERSION 3.22)
+
+project(toy_debug  LANGUAGES C CXX)
+
+
+set(CMAKE_PREFIX_PATH ~/dev/0.my/play_llvm_x86_linux_install/lib/cmake/llvm)
+find_package(LLVM REQUIRED CONFIG)
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+
+add_executable(${PROJECT_NAME} toy.cpp)
+
+
+# ${LLVM_INSTALL_PREFIX}/lib/cmake/llvm/include
+include_directories(${LLVM_INCLUDE_DIRS})
+
+# ./llvm-config --cxxflags
+separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
+add_definitions(${LLVM_DEFINITIONS_LIST})
+
+# next only  include core lib
+# ./llvm-config --ldflags --libs --system-libs --libs support core irreader
+llvm_map_components_to_libnames(llvm_libs support core irreader
+    ExecutionEngine
+    Object
+    OrcJIT
+    TargetParser
+    native 
+    all
+    ASMParser MCA MCTargetDesc
+    LLVMIRPrinter LLVMAsmPrinter CodeGen LLVMX86CodeGen LLVMCParser LLVMIRParser
+    LLVMTarget LLVMTargetParser
+    LLVMX86AsmParser LLVMX86TargetMCA LLVMX86Desc LLVMX86AsmPrinter LLVMX86Utils LLVMX86Info LLVMX86Disassembler)
+message(STATUS "llvm_libs: ${llvm_libs}")
+target_link_libraries(${PROJECT_NAME} ${llvm_libs})
+
+
+
+
+

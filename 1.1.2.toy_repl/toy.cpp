@@ -12,9 +12,25 @@
 // verifyFunction
 #include "llvm/IR/Verifier.h"
 
+// for jit support
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/ExecutionEngine/JITSymbol.h"
+#include "llvm/ExecutionEngine/Orc/CompileUtils.h"
+#include "llvm/ExecutionEngine/Orc/Core.h"
+#include "llvm/ExecutionEngine/Orc/ExecutionUtils.h"
+#include "llvm/ExecutionEngine/Orc/ExecutorProcessControl.h"
+#include "llvm/ExecutionEngine/Orc/IRCompileLayer.h"
+#include "llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h"
+#include "llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h"
+#include "llvm/ExecutionEngine/Orc/Shared/ExecutorSymbolDef.h"
+#include "llvm/ExecutionEngine/SectionMemoryManager.h"
+
+#include "Interpreter.h"
+
 //llvm #include "llvm/IR/LLVMContext.h"
 
 //using namespace llvm;
+//using namespace llvm::orc;
 // clang++-16 -I ~/dev/0.my/play_llvm_x86_linux_install/include toy.cpp -o toy
 static llvm::ExitOnError ExitOnErr;
 enum Token_Type {
@@ -144,6 +160,9 @@ static std::unique_ptr<llvm::LLVMContext> TheContext; // contains all the states
 static std::unique_ptr<llvm::Module> TheModule{}; // contains functions and global variables //{} to ensure nullpt init
 static std::unique_ptr<llvm::IRBuilder<>> Builder; // ir build keeps track of the current location for inserting new instructions
 static std::map<std::string, llvm::Value*> Named_Values;
+
+static std::unique_ptr<Interpreter> TheJIT; // for jit support
+
 static void  PrintModule() {
     // Print out all of the generated code.
     TheModule->print(llvm::errs(), nullptr);
@@ -166,8 +185,8 @@ llvm::Function *getFunction(std::string Name) {
 static void InitializeModule() {
     // Open a new context and module.
     TheContext = std::make_unique<llvm::LLVMContext>();
-    TheModule = std::make_unique<llvm::Module>("my toy", *TheContext);
-
+    TheModule = std::make_unique<llvm::Module>("my repl toy", *TheContext);
+    TheModule->setDataLayout(TheJIT->getDataLayout());// getTargetMachine().createDataLayout());
     // Create a new builder for the module.
     Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);
 }
@@ -229,6 +248,7 @@ llvm::Function *FunctionImplAST::Codegen() {
     auto &P = *Func_Decl;
     FunctionProtos[Func_Decl->Func_name] = std::move(Func_Decl);
     llvm::Function *TheFunction = getFunction(P.Func_name);
+
     if (TheFunction == 0) return 0;
 
     Named_Values.clear();
@@ -372,7 +392,7 @@ static std::unique_ptr<ExprAST> Parse_Expression() {
 }
 
 //external ::= 'extern' prototype
-static std::unique_ptr<FunctionAST> Parse_Extern() {
+static std::unique_ptr<FunctionPrototypeAST> Parse_Extern() {
     getNextToken();
     return Parse_Function_Prototype();
 }
@@ -417,7 +437,7 @@ static void Handle_Function_Definition() {
 }
 
 static void Handle_Extern() {
-    if (auto F = Parse_Function_Prototype()) {
+    if (auto F = Parse_Extern()) {
         if (auto LF = F->Codegen()) {
             FunctionProtos[F->Func_name] = std::move(F);
         }
@@ -428,7 +448,27 @@ static void Handle_Extern() {
 
 static void Handle_Top_Level_Expression() {
     if (auto F = Parse_Top_Level()) {
-        if (auto LF = F->Codegen()) {}
+        if (auto LF = F->Codegen()) {
+            // for jit support
+            PrintModule();
+            auto RT = TheJIT->getMainJITDylib().createResourceTracker();
+            auto TSM = llvm::orc::ThreadSafeModule(std::move(TheModule), std::move(TheContext));
+            ExitOnErr(TheJIT->addModule(std::move(TSM), RT));
+            InitializeModule();
+            
+            // Search the JIT for the __anon_expr symbol. which is root
+            auto ExprSymbol = ExitOnErr(TheJIT->lookup("__anon_expr"));
+            //assert(ExprSymbol && "Function not found");
+
+            // Get the symbol's address and cast it to the right type (takes no
+            // arguments, returns a double) so we can call it as a native function.
+            int (*FP)() = ExprSymbol.getAddress().toPtr<int (*)()>();
+            fprintf(stderr, "Evaluated to %d\n", FP());
+
+            // Delete the anonymous expression module from the JIT.
+            ExitOnErr(RT->remove());
+
+        }
     } else {
         getNextToken();
     }
@@ -463,16 +503,42 @@ static void Driver() {
 }
 
 
+//===----------------------------------------------------------------------===//
+// "Library" functions that can be "extern'd" from user code.
+//===----------------------------------------------------------------------===//
 
+#ifdef _WIN32
+#define DLLEXPORT __declspec(dllexport)
+#else
+#define DLLEXPORT
+#endif
+
+/// putchard - putchar that takes a int and returns 0.
+extern "C" DLLEXPORT int putchard(int X) {
+  fputc((char)X, stderr);
+  return 0;
+}
+
+/// printd - printf that takes a int prints it as "%d\n", returning 0.
+extern "C" DLLEXPORT int printd(int X) {
+  fprintf(stderr, "%d\n", X);
+  return 0;
+}
 // Avoid including "llvm-c/Core.h" for compile time, fwd-declare this instead.
 //llvm  extern "C" LLVMContextRef LLVMGetGlobalContext(void);
 
 //llvm  Module *Module_Ob;
 
 int main(int argc, char** argv) {
+    // select the target // jit need target selection
+    llvm::InitializeNativeTarget();
+    llvm::InitializeNativeTargetAsmPrinter();
+    llvm::InitializeNativeTargetAsmParser();
+    TheJIT = ExitOnErr(Interpreter::Create());;
     InitializeModule();
+    
     //llvm  LLVMContextRef Context = LLVMGetGlobalContext();
-    file = fopen("/home/yoon/dev/0.my/my_toy/toy_front/example", "r"); //fopen(argv[1], "r");
+    file = fopen("/home/yoon/dev/0.my/my_toy/toy_repl/example", "r"); //fopen(argv[1], "r");
     if (file == NULL) {
         fprintf(stderr, "Can't open file\n");
         return 1;
