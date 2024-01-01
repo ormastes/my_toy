@@ -12,153 +12,25 @@
 // verifyFunction
 #include "llvm/IR/Verifier.h"
 
-#include "llvm/IR/LegacyPassManager.h"
 
-#include "llvm/MC/TargetRegistry.h"
-#include "llvm/Support/FileSystem.h"
-#include "llvm/Support/TargetSelect.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/Target/TargetMachine.h"
-#include "llvm/Target/TargetOptions.h"
-#include "llvm/TargetParser/Host.h"
+#include "variable_logic.h"
 
-//llvm #include "llvm/IR/LLVMContext.h"
-
-//using namespace llvm;
-//using namespace llvm::sys;
-// clang++-16 -I ~/dev/0.my/play_llvm_x86_linux_install/include toy.cpp -o toy
-static llvm::ExitOnError ExitOnErr;
-enum Token_Type {
-    tok_eof = -1,
-    // commands
-    tok_def = -2,
-    tok_extern = -3,
-
-    // primary
-    tok_identifier = -4,
-    tok_number = -5,
-    
-    tok_paren,
-    
-};
-static int NumVal;
-static std::string IdentifierStr;
-FILE* file;
-
-static int gettok() {
-    static int LastChar = ' ';
-    // skip any whitespace
-    while(isspace(LastChar)) LastChar = fgetc(file);
-    // identifier: [a-zA-Z][a-zA-Z0-9]*
-    if (isalpha(LastChar)) {
-        IdentifierStr = LastChar;
-        while(isalnum((LastChar = fgetc(file)))) IdentifierStr += LastChar;
-
-        if (IdentifierStr == "def") return tok_def;
-        if (IdentifierStr == "extern") return tok_extern;
-        return tok_identifier;
-    }
-    // number: [0-9.]+ 
-    if (isdigit(LastChar)) {
-        std::string NumStr;
-        do {
-            NumStr += LastChar;
-            LastChar = fgetc(file);
-        } while(isdigit(LastChar));
-        NumVal = strtod(NumStr.c_str(), 0);
-        return tok_number;
-    }
-    // comment until end of line
-    if (LastChar == '#') {
-        do LastChar = fgetc(file);
-        while(LastChar != EOF && LastChar != '\n' && LastChar != '\r');
-        if (LastChar != EOF) return gettok();
-    }
-    // end of file
-    if (LastChar == EOF) return tok_eof;
-    // otherwise just return the character as its ascii value
-    int ThisChar = LastChar;
-    // update LastChar
-    LastChar = fgetc(file);
-    return ThisChar;
-
-}
-
-//===----------------------------------------------------------------------===//
-// Abstract Syntax Tree (aka Parse Tree)
-//===----------------------------------------------------------------------===//
-class ExprAST {
-public:
-    virtual ~ExprAST() = default;
-    virtual llvm::Value *Codegen() = 0;
-};
-
-class  VariableExprAST : public ExprAST {
-    std::string Name;
-public:
-    VariableExprAST(const std::string &name) : Name(name) {}
-    virtual llvm::Value *Codegen() override;
-};
-
-class NumericExprAST : public ExprAST {
-    int Val;
-public:
-    NumericExprAST(int val) : Val(val) {}
-    virtual llvm::Value *Codegen() override;
-};
-
-class BinaryExprAST : public ExprAST {
-    std::string Op;
-    std::unique_ptr<ExprAST> LHS, RHS;
-public:
-    BinaryExprAST(const std::string &op, std::unique_ptr<ExprAST> lhs, std::unique_ptr<ExprAST>  rhs) :
-        Op(op), LHS(std::move(lhs)), RHS(std::move(rhs)) {}
-    virtual llvm::Value *Codegen() override;
-};
-
-class FunctionAST {
-public:
-    virtual ~FunctionAST() = default;
-    virtual llvm::Function *Codegen() = 0;
-};
-
-class FunctionPrototypeAST  : public FunctionAST{
-public:
-    std::string Func_name;
-    std::vector<std::string> Arg_names;
-    FunctionPrototypeAST(const std::string &name, const std::vector<std::string> &args) :
-        Func_name(name), Arg_names(args) {}
-    virtual llvm::Function *Codegen() ;
-};
-
-class FunctionImplAST : public FunctionAST {
-    std::unique_ptr<FunctionPrototypeAST> Func_Decl;
-    std::unique_ptr<ExprAST> Func_Body;
-public:
-    FunctionImplAST(std::unique_ptr<FunctionPrototypeAST> proto,  std::unique_ptr<ExprAST> body) :
-        Func_Decl(std::move(proto)), Func_Body(std::move(body)) {}
-    virtual llvm::Function *Codegen() ; 
-};
-
-class CallExprAST : public ExprAST {
-    std::string Func_Callee;
-    std::vector<std::unique_ptr<ExprAST>> Args;
-public:
-    CallExprAST(const std::string &callee, std::vector<std::unique_ptr<ExprAST>> args) :
-        Func_Callee(callee), Args(std::move(args)) {}
-    virtual llvm::Value *Codegen() override;
-};
-
+llvm::Function *getFunction(std::string Name);
+class FunctionPrototypeAST;
+llvm::ExitOnError ExitOnErr;
 static std::map<std::string, std::unique_ptr<FunctionPrototypeAST>> FunctionProtos;
-
-static std::unique_ptr<llvm::LLVMContext> TheContext; // contains all the states global to the compiler
-static std::unique_ptr<llvm::Module> TheModule{}; // contains functions and global variables //{} to ensure nullpt init
+std::unique_ptr<llvm::LLVMContext> TheContext; // contains all the states global to the compiler
+std::unique_ptr<llvm::Module> TheModule{}; // contains functions and global variables //{} to ensure nullpt init
 static std::unique_ptr<llvm::IRBuilder<>> Builder; // ir build keeps track of the current location for inserting new instructions
 static std::map<std::string, llvm::Value*> Named_Values;
-static void  PrintModule() {
-    // Print out all of the generated code.
-    TheModule->print(llvm::errs(), nullptr);
-}
+
+#include "common.h"
+#include "token.h"
+#include "ast.h"
+#include "ast_code_gen.h"
+#include "parser.h"
+// clang++-16 -I ~/dev/0.my/play_llvm_x86_linux_install/include toy.cpp -o toy
+
 llvm::Function *getFunction(std::string Name) {
   // First, see if the function has already been added to the current module.
   if (auto *F = TheModule->getFunction(Name))
@@ -173,277 +45,23 @@ llvm::Function *getFunction(std::string Name) {
   // If no existing prototype exists, return null.
   return nullptr;
 }
+static void bootup_init() {
+    variable_bootup_init();
+}
  // keeps track of which values are defined in the current scope
 static void InitializeModule() {
     // Open a new context and module.
     TheContext = std::make_unique<llvm::LLVMContext>();
-    TheModule = std::make_unique<llvm::Module>("my toy obj", *TheContext);
-
+    TheModule = std::make_unique<llvm::Module>(__PROJECT_NAME__, *TheContext);
+    variable_InitializeModule();
     // Create a new builder for the module.
     Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);
 }
 
-llvm::Value * LogError(const char *text) {
-    fprintf(stderr, "Error: %s\n", text);
-    return nullptr;
-}
-llvm::Function * LogErrorF(const char *text) {
-    LogError(text);
-    return nullptr;
-}
-std::unique_ptr<ExprAST> LogErrorEA(const char *Str) {
-  fprintf(stderr, "Error: %s\n", Str);
-  return nullptr;
-}
-std::unique_ptr<FunctionAST>  LogErrorFA(const char *text) {
-    LogError(text);
-    return nullptr;
-}
 
-llvm::Value *NumericExprAST::Codegen() {
-    return llvm::ConstantInt::get(*TheContext, llvm::APInt(32, Val));
-}
-llvm::Value *VariableExprAST::Codegen() {
-    llvm::Value *V = Named_Values[Name];
-    if (!V) return LogError("Unknown variable name");
-    return V;
-}
-llvm::Value *BinaryExprAST::Codegen() {
-    llvm::Value *L = LHS->Codegen();
-    llvm::Value *R = RHS->Codegen();
-    if (!L || !R) return 0;
 
-    switch(Op[0]) {
-        case '+': return Builder->CreateAdd(L, R, "addtmp");
-        case '-': return Builder->CreateSub(L, R, "subtmp");
-        case '*': return Builder->CreateMul(L, R, "multmp");
-        case '<':
-            L = Builder->CreateICmpULT(L, R, "cmptmp");
-            return Builder->CreateZExt(L, llvm::Type::getInt32Ty(*TheContext), "booltmp");
-        default: return LogError("invalid binary operator");
-    }
-}
-llvm::Function *FunctionPrototypeAST::Codegen() {
-    std::vector<llvm::Type*> Integers(Arg_names.size(),  llvm::Type::getInt32Ty(*TheContext));
-    llvm::FunctionType *FT = llvm::FunctionType::get(llvm::Type::getInt32Ty(*TheContext), Integers, false);
-    llvm::Function *F = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, Func_name, TheModule.get());
 
-    unsigned Idx = 0;
-    for (auto &Arg : F->args())
-        Arg.setName(Arg_names[Idx++]);
 
-    return F;
-}
-
-llvm::Function *FunctionImplAST::Codegen() {
-    Named_Values.clear();
-    auto &P = *Func_Decl;
-    FunctionProtos[Func_Decl->Func_name] = std::move(Func_Decl);
-    llvm::Function *TheFunction = getFunction(P.Func_name);
-    if (TheFunction == 0) return 0;
-
-    Named_Values.clear();
-    for (auto &Arg : TheFunction->args())
-        Named_Values[std::string(Arg.getName())] = &Arg;
-    llvm::BasicBlock *BB = llvm::BasicBlock::Create(*TheContext, "entry", TheFunction);
-    Builder->SetInsertPoint(BB);
-    if (llvm::Value *RetVal = Func_Body->Codegen()) {
-        Builder->CreateRet(RetVal);
-        verifyFunction(*TheFunction);
-        return TheFunction;
-    }
-    TheFunction->eraseFromParent();
-
-    return 0;
-}
-
-llvm::Value *CallExprAST::Codegen() {
-    llvm::Function *CalleeF = getFunction(Func_Callee);
-    if (CalleeF == 0) return LogError("Unknown function referenced");
-
-    if (CalleeF->arg_size() != Args.size()) return LogError("Incorrect # arguments passed");
-
-    std::vector<llvm::Value*> ArgsV;
-    for (unsigned i = 0, e = Args.size(); i != e; ++i) {
-        ArgsV.push_back(Args[i]->Codegen());
-        if (ArgsV.back() == 0) return 0;
-    }
-
-    return Builder->CreateCall(CalleeF, ArgsV, "calltmp");
-}
-//===----------------------------------------------------------------------===//
-// Parser
-//===----------------------------------------------------------------------===//
-
-static int CurTok;
-static int getNextToken() { return CurTok = gettok(); }
-
-static std::map<char, int> Binop_Precedence;
-
-static std::unique_ptr<ExprAST> Parse_Primary();
-static std::unique_ptr<ExprAST> Parse_Expression();
-static std::unique_ptr<FunctionPrototypeAST> Parse_Function_Prototype();
-
-static void init_precedence() {
-    Binop_Precedence['<'] = 10;
-    Binop_Precedence['+'] = 20;
-    Binop_Precedence['-'] = 20;
-    Binop_Precedence['*'] = 40;
-}
-
-static int GetTokPrecedence() {
-    if (!isascii(CurTok)) return -1;
-    int TokPrec = Binop_Precedence[CurTok];
-    if (TokPrec <= 0) return -1;
-    return TokPrec;
-}
-
-// numberexpr ::= number
-static std::unique_ptr<ExprAST> Parse_Numeric() {
-    auto Result =  std::make_unique<NumericExprAST>(NumVal);
-    getNextToken();
-    return Result;
-}
-
-// binoprhs ::= ('+' primary)*
-static std::unique_ptr<ExprAST> Parse_Bin_op(int ExprPrec, std::unique_ptr<ExprAST> LHS) {
-    while(1) {
-        int TokPrec = GetTokPrecedence();
-        if (TokPrec < ExprPrec) return LHS;
-
-        int BinOp = CurTok;
-        getNextToken();
-
-        auto RHS = Parse_Primary();
-        if (!RHS) return 0;
-
-        int NextPrec = GetTokPrecedence();
-        if (TokPrec < NextPrec) {
-            RHS = Parse_Bin_op(TokPrec+1, std::move(RHS));
-            if (RHS == 0) return 0;
-        }
-        LHS = std::make_unique<BinaryExprAST>(std::string(1, BinOp),
-             std::move(LHS), std::move(RHS));
-    }
-}
-
-// parenexpr ::= '(' expression ')'
-static std::unique_ptr<ExprAST> Parse_Paren_Expression() {
-    getNextToken();
-    auto V = Parse_Expression();
-    if (!V) return 0;
-
-    if (CurTok != ')') return LogErrorEA("Expected ')'");
-    getNextToken();
-    return V;
-}
-
-// identifierexpr ::= identifier | identifier '(' expression* ')'
-static std::unique_ptr<ExprAST> Parse_Identifier() {
-    std::string IdName = IdentifierStr;
-    getNextToken();
-    if (CurTok != '(') return std::make_unique<VariableExprAST>(IdName);
-
-    getNextToken();
-    std::vector<std::unique_ptr<ExprAST>> Args;
-    if (CurTok != ')') {
-        while(1) {
-            std::unique_ptr<ExprAST> Arg = Parse_Primary();
-            if (!Arg) return LogErrorEA("Expected expression after open parenthesis ')'");
-            Args.push_back(std::move(Arg));
-            if (CurTok == ')') break;
-            if (CurTok != ',') return LogErrorEA("Expected ')' or ',' in argument list");
-            getNextToken();
-        }
-    }
-    getNextToken();
-    return std::make_unique<CallExprAST>(IdName, std::move(Args));
-}
-
-// primary ::= identifierexpr|numberexpr|parenexpr
-static std::unique_ptr<ExprAST> Parse_Primary() {
-    switch(CurTok) {
-        case tok_identifier:
-            return Parse_Identifier();
-        case tok_number:
-            return Parse_Numeric();
-        case '(':
-            return Parse_Paren_Expression();
-        default:
-            return 0;
-    }
-}
-
-// expression ::= primary binoprhs
-static std::unique_ptr<ExprAST> Parse_Expression() {
-    std::unique_ptr<ExprAST> LHS = Parse_Primary();
-    if (!LHS) return 0;
-
-    return Parse_Bin_op(0, std::move(LHS));
-}
-
-//external ::= 'extern' prototype
-static std::unique_ptr<FunctionAST> Parse_Extern() {
-    getNextToken();
-    return Parse_Function_Prototype();
-}
-
-//prototype ::= id '(' id* ')'
-static  std::unique_ptr<FunctionPrototypeAST>  Parse_Function_Prototype() {
-    if (CurTok != tok_identifier) return 0;
-
-    std::string Fn_Name = IdentifierStr;
-    getNextToken();
-    if (CurTok != '(') return 0;
-
-    std::vector<std::string> Arg_Names;
-    while(getNextToken() == tok_identifier) Arg_Names.push_back(IdentifierStr);
-    if (CurTok != ')') return 0;
-
-    getNextToken();
-    return std::make_unique<FunctionPrototypeAST>(Fn_Name, Arg_Names);
-}
-
-static std::unique_ptr<FunctionAST> Parse_Function_Definition() {
-    getNextToken();
-    auto Decl = Parse_Function_Prototype();
-    if (Decl == 0) return 0;
-
-    if (auto Body = Parse_Expression()) return std::make_unique<FunctionImplAST>(std::move(Decl), std::move(Body));
-    return 0;
-}
-static std::unique_ptr<FunctionImplAST> Parse_Top_Level() {
-    if (auto E = Parse_Expression()) {// Make an anonymous proto.
-        auto Proto = std::make_unique<FunctionPrototypeAST>("__anon_expr", std::vector<std::string>());
-        return std::make_unique< FunctionImplAST>(std::move(Proto), std::move(E));
-    }
-    return 0;
-}
-static void Handle_Function_Definition() {
-    if (auto F = Parse_Function_Definition()) {
-       if (auto LF = F->Codegen()) {}
-    } else {
-        getNextToken();
-    }
-}
-
-static void Handle_Extern() {
-    if (auto F = Parse_Function_Prototype()) {
-        if (auto LF = F->Codegen()) {
-            FunctionProtos[F->Func_name] = std::move(F);
-        }
-    } else {
-        getNextToken();
-    }
-}
-
-static void Handle_Top_Level_Expression() {
-    if (auto F = Parse_Top_Level()) {
-        if (auto LF = F->Codegen()) {}
-    } else {
-        getNextToken();
-    }
-}
 
 //===----------------------------------------------------------------------===//
 // Main driver code.
@@ -481,9 +99,10 @@ static void Driver() {
 //llvm  Module *Module_Ob;
 
 int main(int argc, char** argv) {
+    bootup_init();
     InitializeModule();
     //llvm  LLVMContextRef Context = LLVMGetGlobalContext();
-    file = fopen("/home/yoon/dev/0.my/my_toy/toy_obj/example", "r"); //fopen(argv[1], "r");
+    file = fopen(__EXAMPLE_FILE__, "r"); //fopen(argv[1], "r");
     if (file == NULL) {
         fprintf(stderr, "Can't open file\n");
         return 1;
@@ -493,60 +112,7 @@ int main(int argc, char** argv) {
     Driver();
     
     PrintModule();
-
-    
-    // Initialize the target registry etc.
-    llvm::InitializeAllTargetInfos();
-    llvm::InitializeAllTargets();
-    llvm::InitializeAllTargetMCs();
-    llvm::InitializeAllAsmParsers();
-    llvm::InitializeAllAsmPrinters();
-
-    auto TargetTriple = llvm::sys::getDefaultTargetTriple();
-    TheModule->setTargetTriple(TargetTriple);
-
-    std::string Error;
-    auto Target = llvm::TargetRegistry::lookupTarget(TargetTriple, Error);
-
-    // Print an error and exit if we couldn't find the requested target.
-    // This generally occurs if we've forgotten to initialise the
-    // TargetRegistry or we have a bogus target triple.
-    if (!Target) {
-        llvm::errs() << Error;
-        return 1;
-    }
-
-    auto CPU = "generic";
-    auto Features = "";
-
-    llvm::TargetOptions opt;
-    auto RM = std::optional<llvm::Reloc::Model>();
-    auto TheTargetMachine =
-        Target->createTargetMachine(TargetTriple, CPU, Features, opt, RM);
-
-    TheModule->setDataLayout(TheTargetMachine->createDataLayout());
-
-    auto Filename = "output.o";
-    std::error_code EC;
-    llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
-
-    if (EC) {
-        llvm::errs() << "Could not open file: " << EC.message();
-        return 1;
-    }
-
-    llvm::legacy::PassManager pass;
-    auto FileType = llvm::CodeGenFileType::ObjectFile;
-
-    if (TheTargetMachine->addPassesToEmitFile(pass, dest, nullptr, FileType)) {
-        llvm::errs() << "TheTargetMachine can't emit a file of this type";
-        return 1;
-    }
-
-    pass.run(*TheModule);
-    dest.flush();
-
-    llvm::outs() << "Wrote " << Filename << "\n";
+    variable_post_main();
 
     return 0;
 }

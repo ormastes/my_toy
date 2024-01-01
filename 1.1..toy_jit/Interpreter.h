@@ -1,4 +1,5 @@
 #pragma once 
+extern void variable_Interpreter_init() ;
 
 
 class Interpreter {
@@ -34,10 +35,7 @@ public:
     // It find current binary interfaces, but currently not working why??
     auto searchGen = cantFail(llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(DL.getGlobalPrefix()));
     MainJD.addGenerator(std::move(searchGen));
-    if (JTMB.getTargetTriple().isOSBinFormatCOFF()) {
-      ObjectLayer.setOverrideObjectFlagsWithResponsibilityFlags(true);
-      ObjectLayer.setAutoClaimResponsibilityForObjectSymbols(true);
-    }
+   variable_Interpreter_init();
   }
 
   ~Interpreter() {

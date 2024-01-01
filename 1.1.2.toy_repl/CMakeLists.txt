@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.22)
 project(toy_repl  LANGUAGES C CXX)
 
 
-add_executable(${PROJECT_NAME} toy.cpp)
+add_executable(${PROJECT_NAME} toy.cpp variable_logic.cpp)
 
 
 # ${LLVM_INSTALL_PREFIX}/lib/cmake/llvm/include
@@ -21,6 +21,8 @@ llvm_map_components_to_libnames(llvm_libs support core irreader native
 message(STATUS "llvm_libs: ${llvm_libs}")
 target_link_libraries(${PROJECT_NAME} ${llvm_libs})
 
+target_compile_definitions(${PROJECT_NAME} PRIVATE __PROJECT_NAME__="${PROJECT_NAME}")
+target_compile_definitions(${PROJECT_NAME} PRIVATE __EXAMPLE_FILE__="${CMAKE_CURRENT_SOURCE_DIR}/example")
 
 
 
