@@ -47,10 +47,10 @@ llvm::Function *getFunction(std::string Name) {
   // If no existing prototype exists, return null.
   return nullptr;
 }
+
 static void bootup_init() {
     variable_bootup_init();
 }
-
  // keeps track of which values are defined in the current scope
 static void InitializeModule() {
     // Open a new context and module.
@@ -60,7 +60,6 @@ static void InitializeModule() {
     // Create a new builder for the module.
     Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);
 }
-
 
 
 
@@ -92,8 +91,6 @@ static void Driver() {
     }
 }
 
-
-
 // Avoid including "llvm-c/Core.h" for compile time, fwd-declare this instead.
 //llvm  extern "C" LLVMContextRef LLVMGetGlobalContext(void);
 
@@ -102,7 +99,6 @@ static void Driver() {
 int main(int argc, char** argv) {
     bootup_init();
     InitializeModule();
-
     //llvm  LLVMContextRef Context = LLVMGetGlobalContext();
     file = fopen(__EXAMPLE_FILE__, "r"); //fopen(argv[1], "r");
     if (file == NULL) {
@@ -114,6 +110,7 @@ int main(int argc, char** argv) {
     Driver();
     
     PrintModule();
+    variable_post_main();
 
     return 0;
 }

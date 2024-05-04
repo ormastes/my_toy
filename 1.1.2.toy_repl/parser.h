@@ -52,7 +52,7 @@ static std::unique_ptr<ExprAST> Parse_Bin_op(int ExprPrec, std::unique_ptr<ExprA
             RHS = Parse_Bin_op(TokPrec+1, std::move(RHS));
             if (RHS == 0) return 0;
         }
-        LHS = std::make_unique<BinaryExprAST>(std::string(1, BinOp),
+        LHS = std::make_unique<BinaryExprAST>(CurLoc, std::string(1, BinOp),
              std::move(LHS), std::move(RHS));
     }
 }
@@ -72,7 +72,7 @@ static std::unique_ptr<ExprAST> Parse_Paren_Expression() {
 static std::unique_ptr<ExprAST> Parse_Identifier() {
     std::string IdName = IdentifierStr;
     getNextToken();
-    if (CurTok != '(') return std::make_unique<VariableExprAST>(IdName);
+    if (CurTok != '(') return std::make_unique<VariableExprAST>(CurLoc, IdName);
 
     getNextToken();
     std::vector<std::unique_ptr<ExprAST>> Args;
@@ -87,7 +87,7 @@ static std::unique_ptr<ExprAST> Parse_Identifier() {
         }
     }
     getNextToken();
-    return std::make_unique<CallExprAST>(IdName, std::move(Args));
+    return std::make_unique<CallExprAST>(CurLoc, IdName, std::move(Args));
 }
 
 // primary ::= identifierexpr|numberexpr|parenexpr
@@ -131,7 +131,7 @@ static  std::unique_ptr<FunctionPrototypeAST>  Parse_Function_Prototype() {
     if (CurTok != ')') return 0;
 
     getNextToken();
-    return std::make_unique<FunctionPrototypeAST>(Fn_Name, Arg_Names);
+    return std::make_unique<FunctionPrototypeAST>(CurLoc, Fn_Name, Arg_Names);
 }
 
 static std::unique_ptr<FunctionAST> Parse_Function_Definition() {
@@ -144,7 +144,7 @@ static std::unique_ptr<FunctionAST> Parse_Function_Definition() {
 }
 static std::unique_ptr<FunctionImplAST> Parse_Top_Level() {
     if (auto E = Parse_Expression()) {// Make an anonymous proto.
-        auto Proto = std::make_unique<FunctionPrototypeAST>("__anon_expr", std::vector<std::string>());
+        auto Proto = variable_parse_top_level(CurLoc);
         return std::make_unique< FunctionImplAST>(std::move(Proto), std::move(E));
     }
     return 0;

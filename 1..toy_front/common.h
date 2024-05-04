@@ -1,8 +1,13 @@
 #pragma once
-
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/Value.h"
 class ExprAST;
 class FunctionAST;
-
+struct SourceLocation {
+  int Line;
+  int Col;
+};
 
 extern llvm::ExitOnError ExitOnErr;
 extern std::unique_ptr<llvm::Module> TheModule; 

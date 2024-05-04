@@ -1,5 +1,6 @@
 #pragma once 
 
+void variable_Interpreter_init(llvm::orc::JITTargetMachineBuilder JTMB, llvm::orc::RTDyldObjectLinkingLayer &ObjectLayer);
 
 class Interpreter {
 private:
@@ -34,7 +35,7 @@ public:
     // It find current binary interfaces, but currently not working why??
     auto searchGen = cantFail(llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(DL.getGlobalPrefix()));
     MainJD.addGenerator(std::move(searchGen));
-   variable_Interpreter_init();
+   variable_Interpreter_init(JTMB, ObjectLayer);
   }
 
   ~Interpreter() {

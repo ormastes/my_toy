@@ -18,24 +18,32 @@
 //using namespace llvm;
 //using namespace llvm::orc;
 extern std::unique_ptr<Interpreter> TheJIT;
+
 void variable_bootup_init();
 
 void variable_InitializeModule();
+void variable_functionast_codegen();
+void variable_post_main();
 
 void variable_Handle_Top_Level_Expression();
-void    variable_Interpreter_init();
+void variable_Interpreter_init(llvm::orc::JITTargetMachineBuilder JTMB, llvm::orc::RTDyldObjectLinkingLayer &ObjectLayer);
+
+class FunctionPrototypeAST;
+class ExprAST;
+class VariableExprAST;
+class NumericExprAST;
+class BinaryExprAST;
+class FunctionImplAST;
+class CallExprAST;
+
 std::unique_ptr<FunctionPrototypeAST> variable_parse_top_level();
-raw_ostream & variable_VariableExprAST_dump(VariableExprAST& self, raw_ostream &out, int ind) ;
-raw_ostream & variable_NumericExprAST_dump(NumericExprAST& self, raw_ostream &out, int ind;
-raw_ostream & variable_BinaryExprAST_dump(BinaryExprAST& self, raw_ostream &out, int ind) ;
-raw_ostream & variable_FunctionImplAST_dump(FunctionImplAST& self, raw_ostream &out, int ind) ;
-raw_ostream & variable_CallExprAST_dump(CallExprAST& self, raw_ostream &out, int ind);
+llvm::raw_ostream & variable_ExprAST_dump(ExprAST& self, llvm::raw_ostream &out, int ind) ;
 
 
-DIType *DebugInfo::getDoubleTy();
+llvm::raw_ostream & variable_VariableExprAST_dump(VariableExprAST& self, llvm::raw_ostream &out, int ind) ;
+llvm::raw_ostream & variable_NumericExprAST_dump(NumericExprAST& self, llvm::raw_ostream &out, int ind);
+llvm::raw_ostream & variable_BinaryExprAST_dump(BinaryExprAST& self, llvm::raw_ostream &out, int ind) ;
+llvm::raw_ostream & variable_FunctionImplAST_dump(FunctionImplAST& self, llvm::raw_ostream &out, int ind) ;
+llvm::raw_ostream & variable_CallExprAST_dump(CallExprAST& self, llvm::raw_ostream &out, int ind);
 
-void DebugInfo::emitLocation(ExprAST *AST) ;
 
-
-
-static DISubroutineType *CreateFunctionType(unsigned NumArgs) ;

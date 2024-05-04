@@ -4,20 +4,17 @@
 // Abstract Syntax Tree (aka Parse Tree)
 //===----------------------------------------------------------------------===//
 
-
-
+extern SourceLocation CurLoc;
 
 class ExprAST {
   SourceLocation Loc;
 
 public:
     ExprAST(SourceLocation Loc = CurLoc) : Loc(Loc) {}
-
     int getLine() const { return Loc.Line; }
     int getCol() const { return Loc.Col; }
-    virtual raw_ostream &dump(raw_ostream &out, int ind) {
-        return out << ':' << getLine() << ':' << getCol() << '\n';
-    }
+
+    virtual llvm::raw_ostream &dump(llvm::raw_ostream &out, int ind) {return variable_ExprAST_dump(*this, out,ind);}
     virtual ~ExprAST() = default;
     virtual llvm::Value *Codegen() = 0;
 };
@@ -28,38 +25,28 @@ public:
       VariableExprAST(SourceLocation Loc, const std::string &Name)
       : ExprAST(Loc), Name(Name) {}
     const std::string &getName() const { return Name; }
-
-    raw_ostream &dump(raw_ostream &out, int ind) override {
-        return ExprAST::dump(out << Name, ind);
-    }
     virtual llvm::Value *Codegen() override;
+    virtual llvm::raw_ostream &dump(llvm::raw_ostream &out, int ind) override {return variable_VariableExprAST_dump(*this, out,ind);}
 };
 
 class NumericExprAST : public ExprAST {
     int Val;
 public:
     NumericExprAST(int val) : Val(val) {}
-    raw_ostream &dump(raw_ostream &out, int ind) override {
-        return ExprAST::dump(out << Val, ind);
-    }
     virtual llvm::Value *Codegen() override;
+    virtual llvm::raw_ostream &dump(llvm::raw_ostream &out, int ind) override {return variable_NumericExprAST_dump(*this, out,ind);};
 };
 
 class BinaryExprAST : public ExprAST {
+public:
     std::string Op;
     std::unique_ptr<ExprAST> LHS, RHS;
-public:
-    BinaryExprAST(SourceLocation Loc, char Op, std::unique_ptr<ExprAST> LHS,
+
+    BinaryExprAST(SourceLocation Loc, std::string Op, std::unique_ptr<ExprAST> LHS,
                     std::unique_ptr<ExprAST> RHS)
         : ExprAST(Loc), Op(Op), LHS(std::move(LHS)), RHS(std::move(RHS)) {}
-
-    raw_ostream &dump(raw_ostream &out, int ind) override {
-        ExprAST::dump(out << "binary" << Op, ind);
-        LHS->dump(indent(out, ind) << "LHS:", ind + 1);
-        RHS->dump(indent(out, ind) << "RHS:", ind + 1);
-        return out;
-    }
     virtual llvm::Value *Codegen() override;
+    virtual llvm::raw_ostream &dump(llvm::raw_ostream &out, int ind) override {return variable_BinaryExprAST_dump(*this, out,ind);}
 };
 
 class FunctionAST {
@@ -87,12 +74,7 @@ public:
     FunctionImplAST(std::unique_ptr<FunctionPrototypeAST> proto,  std::unique_ptr<ExprAST> body) :
         Func_Decl(std::move(proto)), Func_Body(std::move(body)) {}
     virtual llvm::Function *Codegen() ; 
-    raw_ostream &dump(raw_ostream &out, int ind) {
-        indent(out, ind) << "FunctionAST\n";
-        ++ind;
-        indent(out, ind) << "Body:";
-        return Body ? Body->dump(out, ind) : out << "null\n";
-    }
+    virtual llvm::raw_ostream &dump(llvm::raw_ostream &out, int ind) {return variable_FunctionImplAST_dump(*this, out,ind);}
 };
 
 class CallExprAST : public ExprAST {
@@ -101,13 +83,7 @@ class CallExprAST : public ExprAST {
 public:
     CallExprAST(SourceLocation Loc, const std::string &Callee,
                 std::vector<std::unique_ptr<ExprAST>> Args)
-        : ExprAST(Loc), Callee(Callee), Args(std::move(Args)) {}
-
-    raw_ostream &dump(raw_ostream &out, int ind) override {
-        ExprAST::dump(out << "call " << Callee, ind);
-        for (const auto &Arg : Args)
-        Arg->dump(indent(out, ind + 1), ind + 1);
-        return out;
-    }
+        : ExprAST(Loc), Func_Callee(Callee), Args(std::move(Args)) {}
     virtual llvm::Value *Codegen() override;
+    virtual llvm::raw_ostream &dump(llvm::raw_ostream &out, int ind) override {return variable_CallExprAST_dump(*this, out,ind);}
 };

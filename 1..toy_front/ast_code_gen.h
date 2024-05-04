@@ -52,7 +52,6 @@ llvm::Function *FunctionImplAST::Codegen() {
         Builder->CreateRet(RetVal);
         verifyFunction(*TheFunction);
 
-	variable_functionast_codegen();
         return TheFunction;
     }
     TheFunction->eraseFromParent();

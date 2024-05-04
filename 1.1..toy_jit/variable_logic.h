@@ -15,6 +15,8 @@
 
 #include "Interpreter.h"
 
+#include "common.h"
+
 //using namespace llvm;
 
 extern std::unique_ptr<Interpreter> TheJIT;
@@ -26,16 +28,25 @@ void variable_functionast_codegen();
 void variable_post_main();
 
 void variable_Handle_Top_Level_Expression();
-void    variable_Interpreter_init();
-std::unique_ptr<FunctionPrototypeAST> variable_parse_top_level();
-raw_ostream & variable_ExprAST_dump(ExprAST& self, raw_ostream &out, int ind) ;
+void variable_Interpreter_init(llvm::orc::JITTargetMachineBuilder JTMB, llvm::orc::RTDyldObjectLinkingLayer &ObjectLayer);
+
+class FunctionPrototypeAST;
+class ExprAST;
+class VariableExprAST;
+class NumericExprAST;
+class BinaryExprAST;
+class FunctionImplAST;
+class CallExprAST;
+
+std::unique_ptr<FunctionPrototypeAST> variable_parse_top_level(SourceLocation CurLoc);
+llvm::raw_ostream & variable_ExprAST_dump(ExprAST& self, llvm::raw_ostream &out, int ind) ;
 
 
-raw_ostream & variable_VariableExprAST_dump(VariableExprAST& self, raw_ostream &out, int ind) ;
-raw_ostream & variable_NumericExprAST_dump(NumericExprAST& self, raw_ostream &out, int ind;
-raw_ostream & variable_BinaryExprAST_dump(BinaryExprAST& self, raw_ostream &out, int ind) ;
-raw_ostream & variable_FunctionImplAST_dump(FunctionImplAST& self, raw_ostream &out, int ind) ;
-raw_ostream & variable_CallExprAST_dump(CallExprAST& self, raw_ostream &out, int ind);
+llvm::raw_ostream & variable_VariableExprAST_dump(VariableExprAST& self, llvm::raw_ostream &out, int ind) ;
+llvm::raw_ostream & variable_NumericExprAST_dump(NumericExprAST& self, llvm::raw_ostream &out, int ind);
+llvm::raw_ostream & variable_BinaryExprAST_dump(BinaryExprAST& self, llvm::raw_ostream &out, int ind) ;
+llvm::raw_ostream & variable_FunctionImplAST_dump(FunctionImplAST& self, llvm::raw_ostream &out, int ind) ;
+llvm::raw_ostream & variable_CallExprAST_dump(CallExprAST& self, llvm::raw_ostream &out, int ind);
 
 
 //===----------------------------------------------------------------------===//

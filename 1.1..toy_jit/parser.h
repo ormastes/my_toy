@@ -42,7 +42,6 @@ static std::unique_ptr<ExprAST> Parse_Bin_op(int ExprPrec, std::unique_ptr<ExprA
         if (TokPrec < ExprPrec) return LHS;
 
         int BinOp = CurTok;
-
         getNextToken();
 
         auto RHS = Parse_Primary();
@@ -88,7 +87,7 @@ static std::unique_ptr<ExprAST> Parse_Identifier() {
         }
     }
     getNextToken();
-    return std::make_unique<CallExprAST>(LitLoc, IdName, std::move(Args));
+    return std::make_unique<CallExprAST>(CurLoc, IdName, std::move(Args));
 }
 
 // primary ::= identifierexpr|numberexpr|parenexpr
@@ -145,7 +144,7 @@ static std::unique_ptr<FunctionAST> Parse_Function_Definition() {
 }
 static std::unique_ptr<FunctionImplAST> Parse_Top_Level() {
     if (auto E = Parse_Expression()) {// Make an anonymous proto.
-        auto Proto = variable_parse_top_level(CurLoc, "main", std::vector<std::string>());
+        auto Proto = variable_parse_top_level(CurLoc);
         return std::make_unique< FunctionImplAST>(std::move(Proto), std::move(E));
     }
     return 0;

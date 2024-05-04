@@ -63,11 +63,8 @@ struct DebugInfo {
   DIType *getDoubleTy();
 } KSDbgInfo;
 
-struct SourceLocation {
-  int Line;
-  int Col;
-};
-static SourceLocation CurLoc;
+
+SourceLocation CurLoc;
 static SourceLocation LexLoc = {1, 0};
 
 static int advance() {

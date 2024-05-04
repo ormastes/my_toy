@@ -2,6 +2,8 @@
 #include "Interpreter.h"
 #include "llvm/Support/Error.h"
 #include "common.h"
+#include <string>
+#include "ast.h"
 
 std::unique_ptr<Interpreter> TheJIT; // for jit support
 
@@ -38,7 +40,7 @@ void variable_Handle_Top_Level_Expression() {
 }
 void variable_post_main() {}
 
-void variable_Interpreter_init() {
+void variable_Interpreter_init(llvm::orc::JITTargetMachineBuilder JTMB, llvm::orc::RTDyldObjectLinkingLayer &ObjectLayer) {
     if (JTMB.getTargetTriple().isOSBinFormatCOFF()) {
       ObjectLayer.setOverrideObjectFlagsWithResponsibilityFlags(true);
       ObjectLayer.setAutoClaimResponsibilityForObjectSymbols(true);
@@ -52,24 +54,24 @@ std::unique_ptr<FunctionPrototypeAST> variable_parse_top_level(SourceLocation Cu
 //===----------------------------------------------------------------------===//
 
 
-raw_ostream & variable_ExprAST_dump(ExprAST& self, raw_ostream &out, int ind) {
+llvm::raw_ostream & variable_ExprAST_dump(ExprAST& self, llvm::raw_ostream &out, int ind) {
         return out;
  }
 
 
-raw_ostream & variable_VariableExprAST_dump(VariableExprAST& self, raw_ostream &out, int ind) override {
+llvm::raw_ostream & variable_VariableExprAST_dump(VariableExprAST& self, llvm::raw_ostream &out, int ind)  {
         return out;
     }
-raw_ostream & variable_NumericExprAST_dump(NumericExprAST& self, raw_ostream &out, int ind) override {
+llvm::raw_ostream & variable_NumericExprAST_dump(NumericExprAST& self, llvm::raw_ostream &out, int ind)  {
         return out;
     }
-raw_ostream & variable_BinaryExprAST_dump(BinaryExprAST& self, raw_ostream &out, int ind) override {
+llvm::raw_ostream & variable_BinaryExprAST_dump(BinaryExprAST& self, llvm::raw_ostream &out, int ind)  {
         return out;
     }
-raw_ostream & variable_FunctionImplAST_dump(FunctionImplAST& self, raw_ostream &out, int ind) {
+llvm::raw_ostream & variable_FunctionImplAST_dump(FunctionImplAST& self, llvm::raw_ostream &out, int ind) {
         return out;
     }
-raw_ostream & variable_CallExprAST_dump(CallExprAST& self, raw_ostream &out, int ind) override {
+llvm::raw_ostream & variable_CallExprAST_dump(CallExprAST& self, llvm::raw_ostream &out, int ind)  {
         return out;
     }
 

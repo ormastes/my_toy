@@ -1,9 +1,11 @@
 #pragma once
 
-
 class ExprAST;
 class FunctionAST;
-
+struct SourceLocation {
+  int Line;
+  int Col;
+};
 
 extern llvm::ExitOnError ExitOnErr;
 extern std::unique_ptr<llvm::LLVMContext> TheContext;

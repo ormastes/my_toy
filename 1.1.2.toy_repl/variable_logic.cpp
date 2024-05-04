@@ -2,6 +2,8 @@
 #include "Interpreter.h"
 #include "llvm/Support/Error.h"
 #include "common.h"
+#include <string>
+#include "ast.h"
 
 std::unique_ptr<Interpreter> TheJIT; // for jit support
 
@@ -36,8 +38,39 @@ void variable_Handle_Top_Level_Expression() {
     // Delete the anonymous expression module from the JIT.
     ExitOnErr(RT->remove());
 }
-void variable_Interpreter_init(){}
+void variable_post_main() {}
+void variable_Interpreter_init(llvm::orc::JITTargetMachineBuilder JTMB, llvm::orc::RTDyldObjectLinkingLayer &ObjectLayer) {}
+std::unique_ptr<FunctionPrototypeAST> variable_parse_top_level(SourceLocation CurLoc) {
+	return std::make_unique<FunctionPrototypeAST>(CurLoc, "__anon_expr", std::vector<std::string>()) ;
+}
 
+
+
+//===----------------------------------------------------------------------===//
+// dump
+//===----------------------------------------------------------------------===//
+
+
+llvm::raw_ostream & variable_ExprAST_dump(ExprAST& self, llvm::raw_ostream &out, int ind) {
+        return out;
+ }
+
+
+llvm::raw_ostream & variable_VariableExprAST_dump(VariableExprAST& self, llvm::raw_ostream &out, int ind)  {
+        return out;
+    }
+llvm::raw_ostream & variable_NumericExprAST_dump(NumericExprAST& self, llvm::raw_ostream &out, int ind)  {
+        return out;
+    }
+llvm::raw_ostream & variable_BinaryExprAST_dump(BinaryExprAST& self, llvm::raw_ostream &out, int ind)  {
+        return out;
+    }
+llvm::raw_ostream & variable_FunctionImplAST_dump(FunctionImplAST& self, llvm::raw_ostream &out, int ind) {
+        return out;
+    }
+llvm::raw_ostream & variable_CallExprAST_dump(CallExprAST& self, llvm::raw_ostream &out, int ind)  {
+        return out;
+    }
 //===----------------------------------------------------------------------===//
 // "Library" functions that can be "extern'd" from user code.
 //===----------------------------------------------------------------------===//
