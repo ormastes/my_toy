@@ -2,6 +2,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Value.h"
+#include "llvm/Support/Error.h"
 class ExprAST;
 class FunctionAST;
 struct SourceLocation {
@@ -10,6 +11,7 @@ struct SourceLocation {
 };
 
 extern llvm::ExitOnError ExitOnErr;
+extern std::unique_ptr<llvm::LLVMContext> TheContext;
 extern std::unique_ptr<llvm::Module> TheModule; 
 
 inline llvm::Value * LogError(const char *text) {

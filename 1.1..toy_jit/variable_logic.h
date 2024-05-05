@@ -19,6 +19,14 @@
 
 //using namespace llvm;
 
+class FunctionPrototypeAST;
+class ExprAST;
+class VariableExprAST;
+class NumericExprAST;
+class BinaryExprAST;
+class FunctionImplAST;
+class CallExprAST;
+
 extern std::unique_ptr<Interpreter> TheJIT;
 
 void variable_bootup_init();
@@ -28,20 +36,10 @@ void variable_functionast_codegen();
 void variable_post_main();
 
 void variable_Handle_Top_Level_Expression();
+std::unique_ptr<FunctionPrototypeAST> variable_parse_top_level(SourceLocation CurLoc);
 void variable_Interpreter_init(llvm::orc::JITTargetMachineBuilder JTMB, llvm::orc::RTDyldObjectLinkingLayer &ObjectLayer);
 
-class FunctionPrototypeAST;
-class ExprAST;
-class VariableExprAST;
-class NumericExprAST;
-class BinaryExprAST;
-class FunctionImplAST;
-class CallExprAST;
-
-std::unique_ptr<FunctionPrototypeAST> variable_parse_top_level(SourceLocation CurLoc);
 llvm::raw_ostream & variable_ExprAST_dump(ExprAST& self, llvm::raw_ostream &out, int ind) ;
-
-
 llvm::raw_ostream & variable_VariableExprAST_dump(VariableExprAST& self, llvm::raw_ostream &out, int ind) ;
 llvm::raw_ostream & variable_NumericExprAST_dump(NumericExprAST& self, llvm::raw_ostream &out, int ind);
 llvm::raw_ostream & variable_BinaryExprAST_dump(BinaryExprAST& self, llvm::raw_ostream &out, int ind) ;
@@ -53,12 +51,14 @@ llvm::raw_ostream & variable_CallExprAST_dump(CallExprAST& self, llvm::raw_ostre
 // "Library" functions that can be "extern'd" from user code.
 //===----------------------------------------------------------------------===//
 #ifdef _WIN32
-#define DLLEXPORT __declspec(dllexport)
+#define EXPORT __declspec(dllexport)
+#elif defined(__linux__)
+#define EXPORT __attribute__((visibility("default")))
 #else
-#define DLLEXPORT
+#define EXPORT
 #endif
 
 /// putchard - putchar that takes a int and returns 0.
-extern "C" DLLEXPORT int putchard(int X);
+extern "C" EXPORT int putchard(int X);
 /// printd - printf that takes a int prints it as "%d\n", returning 0.
-extern "C" DLLEXPORT int printd(int X);
+extern "C" EXPORT int printd(int X);

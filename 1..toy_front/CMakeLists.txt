@@ -18,13 +18,27 @@ add_definitions(${LLVM_DEFINITIONS_LIST})
 
 # next only  include core lib
 # ./llvm-config --ldflags --libs --system-libs --libs support core irreader
-llvm_map_components_to_libnames(llvm_libs support core irreader)
+llvm_map_components_to_libnames(llvm_libs support core irreader
+#    native
+#    Analysis
+#    ExecutionEngine
+#    InstCombine
+#    Object
+#    RuntimeDyld
+#    ScalarOpts
+#    OrcJIT
+)
 message(STATUS "llvm_libs: ${llvm_libs}")
 target_link_libraries(${PROJECT_NAME} ${llvm_libs})
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE __PROJECT_NAME__="${PROJECT_NAME}")
 target_compile_definitions(${PROJECT_NAME} PRIVATE __EXAMPLE_FILE__="${CMAKE_CURRENT_SOURCE_DIR}/example")
 
+add_custom_target(run_${PROJECT_NAME}
+    COMMAND ${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/example
+    DEPENDS ${PROJECT_NAME}
+    WORKING_DIRECTORY ${CAMKE_CURRENT_BUILD_DIR}
+    COMMENT "Running ${PROJECT_NAME}")
 
 
 

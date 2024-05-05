@@ -20,7 +20,8 @@ message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
 # use ld liner
-add_link_options(-fuse-ld=lld)
+## Linker Options: If you’re building your binary with GCC or Clang, make sure to use the -rdynamic option. This instructs the linker to add all symbols to the dynamic symbol table, making them visible to dynamic linking12.
+add_link_options(-fuse-ld=lld -rdynamic)
 #add_compile_options(-v)
 #add_link_options(-v)
 
