@@ -21,7 +21,7 @@ llvm::ExitOnError ExitOnErr;
 static std::map<std::string, std::unique_ptr<FunctionPrototypeAST>> FunctionProtos;
 std::unique_ptr<llvm::LLVMContext> TheContext; // contains all the states global to the compiler
 std::unique_ptr<llvm::Module> TheModule{}; // contains functions and global variables //{} to ensure nullpt init
-static std::unique_ptr<llvm::IRBuilder<>> Builder; // ir build keeps track of the current location for inserting new instructions
+std::unique_ptr<llvm::IRBuilder<>> Builder; // ir build keeps track of the current location for inserting new instructions
 static std::map<std::string, llvm::Value*> Named_Values;
 
 
@@ -55,8 +55,6 @@ static void bootup_init() {
 static void InitializeModule() {
     // Open a new context and module.
     variable_InitializeModule();
-    // Create a new builder for the module.
-    Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);
 }
 
 

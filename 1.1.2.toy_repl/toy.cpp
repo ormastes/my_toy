@@ -54,8 +54,6 @@ static void bootup_init() {
  // keeps track of which values are defined in the current scope
 static void InitializeModule() {
     // Open a new context and module.
-    TheContext = std::make_unique<llvm::LLVMContext>();
-    TheModule = std::make_unique<llvm::Module>(__PROJECT_NAME__, *TheContext);
     variable_InitializeModule();
     // Create a new builder for the module.
     Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);

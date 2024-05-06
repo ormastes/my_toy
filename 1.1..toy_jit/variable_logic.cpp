@@ -4,8 +4,11 @@
 #include <string>
 #include "ast.h"
 #include "Interpreter.h"
+// IrBuilder
+#include "llvm/IR/IRBuilder.h"
 
-std::unique_ptr<Interpreter> TheJIT; // for jit support
+std::unique_ptr<Interpreter> TheJIT; // for jit 
+extern std::unique_ptr<llvm::IRBuilder<>> Builder;
 
 void variable_bootup_init() {
     // select the target // jit need target selection
@@ -19,6 +22,9 @@ void variable_InitializeModule() {
     TheContext = std::make_unique<llvm::LLVMContext>();
     TheModule = std::make_unique<llvm::Module>(__PROJECT_NAME__, *TheContext);
     TheModule->setDataLayout(TheJIT->getDataLayout());// getTargetMachine().createDataLayout());
+
+    // Create a new builder for the module.
+    Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);
 }
 
 void variable_Handle_Top_Level_Expression() {
@@ -51,6 +57,8 @@ void variable_Interpreter_init(llvm::orc::JITTargetMachineBuilder JTMB, llvm::or
 std::unique_ptr<FunctionPrototypeAST> variable_parse_top_level(SourceLocation CurLoc) {
 	return std::make_unique<FunctionPrototypeAST>(CurLoc, "__anon_expr", std::vector<std::string>()) ;
 }
+
+
 //===----------------------------------------------------------------------===//
 // dump
 //===----------------------------------------------------------------------===//
@@ -74,7 +82,6 @@ llvm::raw_ostream & variable_FunctionImplAST_dump(FunctionImplAST& self, llvm::r
 llvm::raw_ostream & variable_CallExprAST_dump(CallExprAST& self, llvm::raw_ostream &out, int ind)  {
     return out;
 }
-
 
 
 //===----------------------------------------------------------------------===//

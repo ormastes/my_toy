@@ -18,6 +18,7 @@
 #include "common.h"
 
 //using namespace llvm;
+//using namespace llvm::orc;
 
 class FunctionPrototypeAST;
 class ExprAST;

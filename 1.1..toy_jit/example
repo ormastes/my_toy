@@ -1,4 +1,3 @@
 def foo(a b) a*a + 2*a*b + b*b;
 extern printd(X);
 printd(65);
-foo(4, 10);

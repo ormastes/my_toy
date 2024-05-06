@@ -9,12 +9,21 @@ class FunctionPrototypeAST;
 
 void variable_bootup_init() {}
 
-void variable_InitializeModule() {}
+void variable_InitializeModule() {
+    TheContext = std::make_unique<llvm::LLVMContext>();
+    TheModule = std::make_unique<llvm::Module>(__PROJECT_NAME__, *TheContext);
+    TheModule->setDataLayout(TheJIT->getDataLayout());// getTargetMachine().createDataLayout());
+
+    // Create a new builder for the module.
+    Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);
+}
 void variable_Handle_Top_Level_Expression() {}
 void variable_post_main() {}
 std::unique_ptr<FunctionPrototypeAST> variable_parse_top_level(SourceLocation CurLoc) {
 	return std::make_unique<FunctionPrototypeAST>(CurLoc, "main", std::vector<std::string>()) ;
 }
+
+
 //===----------------------------------------------------------------------===//
 // dump
 //===----------------------------------------------------------------------===//
