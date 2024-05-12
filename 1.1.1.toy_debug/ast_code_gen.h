@@ -13,7 +13,7 @@ llvm::Value *VariableExprAST::Codegen() {
     llvm::Value *V = Named_Values[Name];
     if (!V) return LogError("Unknown variable name");
     KSDbgInfo.emitLocation(this);
-    return  Builder->CreateLoad(llvm::Type::getDoubleTy(*TheContext), V, Name.c_str());
+    return  Builder->CreateLoad(llvm::Type::getInt32Ty(*TheContext), V, Name.c_str());
 }
 llvm::Value *BinaryExprAST::Codegen() {
     KSDbgInfo.emitLocation(this);
