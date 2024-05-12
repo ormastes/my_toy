@@ -48,18 +48,3 @@ llvm::raw_ostream & variable_FunctionImplAST_dump(FunctionImplAST& self, llvm::r
 llvm::raw_ostream & variable_CallExprAST_dump(CallExprAST& self, llvm::raw_ostream &out, int ind);
 
 
-//===----------------------------------------------------------------------===//
-// "Library" functions that can be "extern'd" from user code.
-//===----------------------------------------------------------------------===//
-#ifdef _WIN32
-#define EXPORT __declspec(dllexport)
-#elif defined(__linux__)
-#define EXPORT __attribute__((visibility("default")))
-#else
-#define EXPORT
-#endif
-
-/// putchard - putchar that takes a int and returns 0.
-extern "C" EXPORT int putchard(int X);
-/// printd - printf that takes a int prints it as "%d\n", returning 0.
-extern "C" EXPORT int printd(int X);

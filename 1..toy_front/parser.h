@@ -134,7 +134,7 @@ static  std::unique_ptr<FunctionPrototypeAST>  Parse_Function_Prototype() {
     return std::make_unique<FunctionPrototypeAST>(CurLoc, Fn_Name, Arg_Names);
 }
 
-static std::unique_ptr<FunctionAST> Parse_Function_Definition() {
+static std::unique_ptr<FunctionImplAST> Parse_Function_Definition() {
     getNextToken();
     auto Decl = Parse_Function_Prototype();
     if (Decl == 0) return 0;

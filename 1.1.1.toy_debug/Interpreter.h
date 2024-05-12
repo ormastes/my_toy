@@ -13,6 +13,7 @@ private:
   llvm::orc::IRCompileLayer CompileLayer;
 
   llvm::orc::JITDylib &MainJD;
+  std::string TargetTriple;
 
   // JTMB is the JITTargetMachineBuilder: ->TargetMachine, TargetTriple
   // EPC is the ExecutorProcessControl: ->JITLinkMemoryManager, JITLinkAsyncLookupService, JITLinkExecutorProcessControl
@@ -30,17 +31,20 @@ public:
         Mangle(*this->ES, this->DL),
         ObjectLayer(*this->ES,[]() { return std::make_unique<llvm::SectionMemoryManager>(); }),
         CompileLayer(*this->ES, ObjectLayer, std::make_unique<llvm::orc::ConcurrentIRCompiler>(std::move(JTMB))),
-        MainJD(this->ES->createBareJITDylib("<main>")) {
+        MainJD(this->ES->createBareJITDylib("<main>")),
+        TargetTriple(this->ES->getExecutorProcessControl().getTargetTriple().str()){
     
     // It find current binary interfaces, but currently not working why??
     auto searchGen = cantFail(llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(DL.getGlobalPrefix()));
     MainJD.addGenerator(std::move(searchGen));
-   variable_Interpreter_init(JTMB, ObjectLayer);
+    variable_Interpreter_init(JTMB, ObjectLayer);
   }
 
   ~Interpreter() {
     if (auto Err = ES->endSession()) ES->reportError(std::move(Err));
   }
+
+  std::string getTargetTriple() { return TargetTriple; }
 
   static llvm::Expected<std::unique_ptr<Interpreter>> Create() {
     auto EPC = llvm::orc::SelfExecutorProcessControl::Create();

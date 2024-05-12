@@ -1,11 +1,16 @@
 #include "variable_logic.h"
-#include "Interpreter.h"
 #include "llvm/Support/Error.h"
 #include "common.h"
 #include <string>
 #include "ast.h"
+#include "Interpreter.h"
+// IrBuilder
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/DIBuilder.h"
+#include "token.h"
 
 std::unique_ptr<Interpreter> TheJIT; // for jit support
+extern std::unique_ptr<llvm::IRBuilder<>> Builder;
 
 void variable_bootup_init() {
     // select the target // jit need target selection
@@ -16,28 +21,16 @@ void variable_bootup_init() {
 }
 
 void variable_InitializeModule() {
+    TheContext = std::make_unique<llvm::LLVMContext>();
+    TheModule = std::make_unique<llvm::Module>(__PROJECT_NAME__, *TheContext);
     TheModule->setDataLayout(TheJIT->getDataLayout());// getTargetMachine().createDataLayout());
+
+    // Create a new builder for the module.
+    Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);
 }
 
-void variable_Handle_Top_Level_Expression() {
-    PrintModule();
-    auto RT = TheJIT->getMainJITDylib().createResourceTracker();
-    auto TSM = llvm::orc::ThreadSafeModule(std::move(TheModule), std::move(TheContext));
-    ExitOnErr(TheJIT->addModule(std::move(TSM), RT));
-    variable_InitializeModule();
-    
-    // Search the JIT for the __anon_expr symbol. which is root
-    auto ExprSymbol = ExitOnErr(TheJIT->lookup("__anon_expr"));
-    //assert(ExprSymbol && "Function not found");
 
-    // Get the symbol's address and cast it to the right type (takes no
-    // arguments, returns a double) so we can call it as a native function.
-    int (*FP)() = ExprSymbol.getAddress().toPtr<int (*)()>();
-    fprintf(stderr, "Evaluated to %d\n", FP());
-
-    // Delete the anonymous expression module from the JIT.
-    ExitOnErr(RT->remove());
-}
+void variable_Handle_Top_Level_Expression() {}
 void variable_post_main() {}
 
 void variable_Interpreter_init(llvm::orc::JITTargetMachineBuilder JTMB, llvm::orc::RTDyldObjectLinkingLayer &ObjectLayer) {
@@ -47,8 +40,10 @@ void variable_Interpreter_init(llvm::orc::JITTargetMachineBuilder JTMB, llvm::or
     }
 }
 std::unique_ptr<FunctionPrototypeAST> variable_parse_top_level(SourceLocation CurLoc) {
-	return std::make_unique<FunctionPrototypeAST>(CurLoc, "main", std::vector<std::string>()); ;
+	return std::make_unique<FunctionPrototypeAST>(CurLoc, "__anon_expr", std::vector<std::string>()) ;
 }
+
+
 //===----------------------------------------------------------------------===//
 // dump
 //===----------------------------------------------------------------------===//
@@ -77,12 +72,12 @@ llvm::raw_ostream & variable_FunctionImplAST_dump(FunctionImplAST& self, llvm::r
         indent(out, ind) << "FunctionAST\n";
         ++ind;
         indent(out, ind) << "Body:";
-        return self.Body ? self.Body->dump(out, ind) : out << "null\n";
+        return self.getBody() ? self.bodyDump(out, ind) : out << "null\n";
     }
 llvm::raw_ostream & variable_CallExprAST_dump(CallExprAST& self, llvm::raw_ostream &out, int ind)  {
-        ExprAST::dump(out << "call " << self.Callee, ind);
-        for (const auto &Arg : self.Args)
-        	self.Arg->dump(indent(out, ind + 1), ind + 1);
+        self.ExprAST::dump(out << "call " << self.getCallee(), ind);
+        for (const auto &Arg : self.getArgs())
+        	Arg->dump(indent(out, ind + 1), ind + 1);
         return out;
     }
 
@@ -92,31 +87,31 @@ llvm::raw_ostream & variable_CallExprAST_dump(CallExprAST& self, llvm::raw_ostre
 // Debug Info Support
 //===----------------------------------------------------------------------===//
 
-static std::unique_ptr<DIBuilder> DBuilder;
+std::unique_ptr<llvm::DIBuilder> DBuilder;
 
-DIType *DebugInfo::getDoubleTy() {
+llvm::DIType *DebugInfo::getDoubleTy() {
   if (DblTy)
     return DblTy;
 
-  DblTy = DBuilder->createBasicType("double", 64, dwarf::DW_ATE_float);
+  DblTy = DBuilder->createBasicType("double", 64, llvm::dwarf::DW_ATE_float);
   return DblTy;
 }
 
 void DebugInfo::emitLocation(ExprAST *AST) {
   if (!AST)
-    return Builder->SetCurrentDebugLocation(DebugLoc());
-  DIScope *Scope;
+    return Builder->SetCurrentDebugLocation(llvm::DebugLoc());
+  llvm::DIScope *Scope;
   if (LexicalBlocks.empty())
     Scope = TheCU;
   else
     Scope = LexicalBlocks.back();
-  Builder->SetCurrentDebugLocation(DILocation::get(
+  Builder->SetCurrentDebugLocation(llvm::DILocation::get(
       Scope->getContext(), AST->getLine(), AST->getCol(), Scope));
 }
 
-static DISubroutineType *CreateFunctionType(unsigned NumArgs) {
-  SmallVector<Metadata *, 8> EltTys;
-  DIType *DblTy = KSDbgInfo.getDoubleTy();
+llvm::DISubroutineType *CreateFunctionType(unsigned NumArgs) {
+  llvm::SmallVector<llvm::Metadata *, 8> EltTys;
+  llvm::DIType *DblTy = KSDbgInfo.getDoubleTy();
 
   // Add the result type.
   EltTys.push_back(DblTy);
@@ -127,24 +122,12 @@ static DISubroutineType *CreateFunctionType(unsigned NumArgs) {
   return DBuilder->createSubroutineType(DBuilder->getOrCreateTypeArray(EltTys));
 }
 
-
-void variable_Handle_Top_Level_Expression() {
-  // for jit support
-  PrintModule();
-  auto RT = TheJIT->getMainJITDylib().createResourceTracker();
-  auto TSM = llvm::orc::ThreadSafeModule(std::move(TheModule), std::move(TheContext));
-  ExitOnErr(TheJIT->addModule(std::move(TSM), RT));
-  InitializeModule();
-  
-  // Search the JIT for the __anon_expr symbol. which is root
-  auto ExprSymbol = ExitOnErr(TheJIT->lookup("__anon_expr"));
-  //assert(ExprSymbol && "Function not found");
-
-  // Get the symbol's address and cast it to the right type (takes no
-  // arguments, returns a double) so we can call it as a native function.
-  int (*FP)() = ExprSymbol.getAddress().toPtr<int (*)()>();
-  fprintf(stderr, "Evaluated to %d\n", FP());
-
-  // Delete the anonymous expression module from the JIT.
-  ExitOnErr(RT->remove());
+/// CreateEntryBlockAlloca - Create an alloca instruction in the entry block of
+/// the function.  This is used for mutable variables etc.
+llvm::AllocaInst *CreateEntryBlockAlloca(llvm::Function *TheFunction,
+                                          llvm::StringRef VarName) {
+  llvm::IRBuilder<> TmpB(&TheFunction->getEntryBlock(),
+                 TheFunction->getEntryBlock().begin());
+  return TmpB.CreateAlloca(llvm::Type::getDoubleTy(*TheContext), nullptr,
+                           VarName);
 }

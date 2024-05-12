@@ -134,7 +134,7 @@ static  std::unique_ptr<FunctionPrototypeAST>  Parse_Function_Prototype() {
     return std::make_unique<FunctionPrototypeAST>(CurLoc, Fn_Name, Arg_Names);
 }
 
-static std::unique_ptr<FunctionAST> Parse_Function_Definition() {
+static std::unique_ptr<FunctionImplAST> Parse_Function_Definition() {
     getNextToken();
     auto Decl = Parse_Function_Prototype();
     if (Decl == 0) return 0;
@@ -151,7 +151,9 @@ static std::unique_ptr<FunctionImplAST> Parse_Top_Level() {
 }
 static void Handle_Function_Definition() {
     if (auto F = Parse_Function_Definition()) {
-       if (auto LF = F->Codegen()) {}
+        if (auto* FnIR = F->Codegen()) {
+            variable_Handle_Function_Definition(FnIR);
+        }
     } else {
         getNextToken();
     }

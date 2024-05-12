@@ -27,7 +27,7 @@ add_link_options(-fuse-ld=lld -rdynamic)
 
 add_subdirectory(1..toy_front)
 add_subdirectory(1.1..toy_jit)
-#add_subdirectory(1.1.1.toy_debug)
+add_subdirectory(1.1.1.toy_debug)
 add_subdirectory(1.1.2.toy_repl)
 #add_subdirectory(1.2.toy_pass)
 # not working LLVMInitializeX86AsmPrinter is not exist...

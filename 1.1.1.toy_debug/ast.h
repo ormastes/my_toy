@@ -33,6 +33,7 @@ class NumericExprAST : public ExprAST {
     int Val;
 public:
     NumericExprAST(int val) : Val(val) {}
+    const int getVal() const { return Val; }
     virtual llvm::Value *Codegen() override;
     virtual llvm::raw_ostream &dump(llvm::raw_ostream &out, int ind) override {return variable_NumericExprAST_dump(*this, out,ind);};
 };
@@ -63,17 +64,20 @@ public:
 
     FunctionPrototypeAST(SourceLocation Loc, const std::string &name, const std::vector<std::string> &args) :
         Func_name(name), Arg_names(args), Line(Loc.Line) {}
+    const std::string &getName() const { return Func_name; }
     int getLine() const { return Line; }
     virtual llvm::Function *Codegen() ;
 };
 
 class FunctionImplAST : public FunctionAST {
+public:
     std::unique_ptr<FunctionPrototypeAST> Func_Decl;
     std::unique_ptr<ExprAST> Func_Body;
-public:
     FunctionImplAST(std::unique_ptr<FunctionPrototypeAST> proto,  std::unique_ptr<ExprAST> body) :
         Func_Decl(std::move(proto)), Func_Body(std::move(body)) {}
-    virtual llvm::Function *Codegen() ; 
+    const ExprAST *getBody() const { return Func_Body.get(); }
+    llvm::raw_ostream & bodyDump(llvm::raw_ostream &out, int ind) {return Func_Body->dump(out, ind);}
+    virtual llvm::Function *Codegen() ;
     virtual llvm::raw_ostream &dump(llvm::raw_ostream &out, int ind) {return variable_FunctionImplAST_dump(*this, out,ind);}
 };
 
@@ -84,6 +88,8 @@ public:
     CallExprAST(SourceLocation Loc, const std::string &Callee,
                 std::vector<std::unique_ptr<ExprAST>> Args)
         : ExprAST(Loc), Func_Callee(Callee), Args(std::move(Args)) {}
+    std::vector<std::unique_ptr<ExprAST>> &getArgs() { return Args; }
+    std::string getCallee() { return Func_Callee; }
     virtual llvm::Value *Codegen() override;
     virtual llvm::raw_ostream &dump(llvm::raw_ostream &out, int ind) override {return variable_CallExprAST_dump(*this, out,ind);}
 };

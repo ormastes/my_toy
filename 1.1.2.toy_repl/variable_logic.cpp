@@ -4,8 +4,11 @@
 #include <string>
 #include "ast.h"
 #include "Interpreter.h"
+// IrBuilder
+#include "llvm/IR/IRBuilder.h"
 
 std::unique_ptr<Interpreter> TheJIT; // for jit support
+extern std::unique_ptr<llvm::IRBuilder<>> Builder;
 
 void variable_bootup_init() {
     // select the target // jit need target selection
@@ -19,6 +22,9 @@ void variable_InitializeModule() {
     TheContext = std::make_unique<llvm::LLVMContext>();
     TheModule = std::make_unique<llvm::Module>(__PROJECT_NAME__, *TheContext);
     TheModule->setDataLayout(TheJIT->getDataLayout());// getTargetMachine().createDataLayout());
+
+    // Create a new builder for the module.
+    Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);
 }
 
 void variable_Handle_Top_Level_Expression() {
@@ -40,9 +46,23 @@ void variable_Handle_Top_Level_Expression() {
     // Delete the anonymous expression module from the JIT.
     ExitOnErr(RT->remove());
 }
+void variable_Handle_Function_Definition(llvm::Function *function)
+{
+    fprintf(stderr, "Read function definition:");
+    function->print(llvm::errs());
+    fprintf(stderr, "\n");
+    ExitOnErr(TheJIT->addModule(
+        llvm::orc::ThreadSafeModule(std::move(TheModule), std::move(TheContext))));
+    variable_InitializeModule();
+}
 void variable_post_main() {}
 
-void variable_Interpreter_init(llvm::orc::JITTargetMachineBuilder JTMB, llvm::orc::RTDyldObjectLinkingLayer &ObjectLayer) {}
+void variable_Interpreter_init(llvm::orc::JITTargetMachineBuilder JTMB, llvm::orc::RTDyldObjectLinkingLayer &ObjectLayer) {
+    if (JTMB.getTargetTriple().isOSBinFormatCOFF()) {
+      ObjectLayer.setOverrideObjectFlagsWithResponsibilityFlags(true);
+      ObjectLayer.setAutoClaimResponsibilityForObjectSymbols(true);
+    }
+}
 std::unique_ptr<FunctionPrototypeAST> variable_parse_top_level(SourceLocation CurLoc) {
 	return std::make_unique<FunctionPrototypeAST>(CurLoc, "__anon_expr", std::vector<std::string>()) ;
 }

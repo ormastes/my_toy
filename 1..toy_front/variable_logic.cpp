@@ -4,16 +4,17 @@
 #include <string>
 #include "ast.h"
 class FunctionPrototypeAST;
+// IrBuilder
+#include "llvm/IR/IRBuilder.h"
 
-
+extern std::unique_ptr<llvm::IRBuilder<>> Builder;
 
 void variable_bootup_init() {}
 
 void variable_InitializeModule() {
     TheContext = std::make_unique<llvm::LLVMContext>();
     TheModule = std::make_unique<llvm::Module>(__PROJECT_NAME__, *TheContext);
-    TheModule->setDataLayout(TheJIT->getDataLayout());// getTargetMachine().createDataLayout());
-
+	
     // Create a new builder for the module.
     Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);
 }

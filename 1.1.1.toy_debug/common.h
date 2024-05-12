@@ -1,5 +1,8 @@
 #pragma once
-
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/Value.h"
+#include "llvm/Support/Error.h"
 class ExprAST;
 class FunctionAST;
 struct SourceLocation {

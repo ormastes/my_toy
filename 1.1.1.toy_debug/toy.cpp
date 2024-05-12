@@ -12,6 +12,7 @@
 // verifyFunction
 #include "llvm/IR/Verifier.h"
 
+#include "llvm/IR/DIBuilder.h"
 
 #include "variable_logic.h"
 
@@ -21,8 +22,9 @@ llvm::ExitOnError ExitOnErr;
 static std::map<std::string, std::unique_ptr<FunctionPrototypeAST>> FunctionProtos;
 std::unique_ptr<llvm::LLVMContext> TheContext; // contains all the states global to the compiler
 std::unique_ptr<llvm::Module> TheModule{}; // contains functions and global variables //{} to ensure nullpt init
-static std::unique_ptr<llvm::IRBuilder<>> Builder; // ir build keeps track of the current location for inserting new instructions
-static std::map<std::string, llvm::Value*> Named_Values;
+std::unique_ptr<llvm::IRBuilder<>> Builder; // ir build keeps track of the current location for inserting new instructions
+std::map<std::string, llvm::Value*> Named_Values;
+
 
 
 #include "common.h"
@@ -54,12 +56,9 @@ static void bootup_init() {
  // keeps track of which values are defined in the current scope
 static void InitializeModule() {
     // Open a new context and module.
-    TheContext = std::make_unique<llvm::LLVMContext>();
-    TheModule = std::make_unique<llvm::Module>(__PROJECT_NAME__, *TheContext);
     variable_InitializeModule();
-    // Create a new builder for the module.
-    Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);
 }
+
 
 
 //===----------------------------------------------------------------------===//
@@ -90,8 +89,6 @@ static void Driver() {
     }
 }
 
-
-
 // Avoid including "llvm-c/Core.h" for compile time, fwd-declare this instead.
 //llvm  extern "C" LLVMContextRef LLVMGetGlobalContext(void);
 
@@ -109,27 +106,28 @@ int main(int argc, char** argv) {
 
     
   // Add the current debug info version into the module.
-  TheModule->addModuleFlag(Module::Warning, "Debug Info Version",
-                           DEBUG_METADATA_VERSION);
+  TheModule->addModuleFlag(llvm::Module::Warning, "Debug Info Version",
+                           llvm::DEBUG_METADATA_VERSION);
 
   // Darwin only supports dwarf2.
-  if (Triple(sys::getProcessTriple()).isOSDarwin())
+  if (llvm::Triple(TheJIT->getTargetTriple()).isOSDarwin())
     TheModule->addModuleFlag(llvm::Module::Warning, "Dwarf Version", 2);
 
   // Construct the DIBuilder, we do this here because we need the module.
-  DBuilder = std::make_unique<DIBuilder>(*TheModule);
+  DBuilder = std::make_unique<llvm::DIBuilder>(*TheModule);
 
   // Create the compile unit for the module.
   // Currently down as "fib.ks" as a filename since we're redirecting stdin
   // but we'd like actual source locations.
   KSDbgInfo.TheCU = DBuilder->createCompileUnit(
-      dwarf::DW_LANG_C, DBuilder->createFile("fib.ks", "."),
+      llvm::dwarf::DW_LANG_C, DBuilder->createFile("fib.ks", "."),
       "Kaleidoscope Compiler", false, "", 0);
 
     //Module_Ob = new Module("my cool jit", Context);
     Driver();
     
     PrintModule();
+    variable_post_main();
 
     return 0;
 }
