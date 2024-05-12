@@ -68,12 +68,12 @@ public:
 };
 
 class FunctionImplAST : public FunctionAST {
-public:
     std::unique_ptr<FunctionPrototypeAST> Func_Decl;
     std::unique_ptr<ExprAST> Func_Body;
+public:
     FunctionImplAST(std::unique_ptr<FunctionPrototypeAST> proto,  std::unique_ptr<ExprAST> body) :
         Func_Decl(std::move(proto)), Func_Body(std::move(body)) {}
-    virtual llvm::Function *Codegen() ;
+    virtual llvm::Function *Codegen() ; 
     virtual llvm::raw_ostream &dump(llvm::raw_ostream &out, int ind) {return variable_FunctionImplAST_dump(*this, out,ind);}
 };
 

@@ -33,6 +33,7 @@ void variable_functionast_codegen();
 void variable_post_main();
 
 void variable_Handle_Top_Level_Expression();
+void variable_Handle_Function_Definition(llvm::Function *function);
 std::unique_ptr<FunctionPrototypeAST> variable_parse_top_level(SourceLocation CurLoc);
 
 

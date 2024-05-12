@@ -151,7 +151,9 @@ static std::unique_ptr<FunctionImplAST> Parse_Top_Level() {
 }
 static void Handle_Function_Definition() {
     if (auto F = Parse_Function_Definition()) {
-       if (auto LF = F->Codegen()) {}
+        if (auto* FnIR = F->Codegen()) {
+            variable_Handle_Function_Definition(FnIR);
+        }
     } else {
         getNextToken();
     }
