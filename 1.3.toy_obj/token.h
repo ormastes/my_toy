@@ -16,15 +16,29 @@ enum Token_Type {
 static int NumVal;
 static std::string IdentifierStr;
 FILE* file;
+SourceLocation CurLoc;
+static SourceLocation LexLoc = {1, 0};
+
+static int advance() {
+  int LastChar =  fgetc(file);
+
+  if (LastChar == '\n' || LastChar == '\r') {
+    LexLoc.Line++;
+    LexLoc.Col = 0;
+  } else
+    LexLoc.Col++;
+  return LastChar;
+}
+
 
 static int gettok() {
     static int LastChar = ' ';
     // skip any whitespace
-    while(isspace(LastChar)) LastChar = fgetc(file);
+    while(isspace(LastChar)) LastChar = advance();
     // identifier: [a-zA-Z][a-zA-Z0-9]*
     if (isalpha(LastChar)) {
         IdentifierStr = LastChar;
-        while(isalnum((LastChar = fgetc(file)))) IdentifierStr += LastChar;
+        while(isalnum((LastChar = advance()))) IdentifierStr += LastChar;
 
         if (IdentifierStr == "def") return tok_def;
         if (IdentifierStr == "extern") return tok_extern;
@@ -35,14 +49,14 @@ static int gettok() {
         std::string NumStr;
         do {
             NumStr += LastChar;
-            LastChar = fgetc(file);
+            LastChar = advance();
         } while(isdigit(LastChar));
         NumVal = strtod(NumStr.c_str(), 0);
         return tok_number;
     }
     // comment until end of line
     if (LastChar == '#') {
-        do LastChar = fgetc(file);
+        do LastChar = advance();
         while(LastChar != EOF && LastChar != '\n' && LastChar != '\r');
         if (LastChar != EOF) return gettok();
     }
@@ -51,12 +65,7 @@ static int gettok() {
     // otherwise just return the character as its ascii value
     int ThisChar = LastChar;
     // update LastChar
-    LastChar = fgetc(file);
+    LastChar = advance();
     return ThisChar;
 
 }
-
-
-
-
-

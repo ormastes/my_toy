@@ -28,10 +28,6 @@ llvm_map_components_to_libnames(llvm_libs support core irreader
     OrcJIT
     TargetParser
     all
-##    ASMParser MCA MCTargetDesc
-##    LLVMIRPrinter LLVMAsmPrinter CodeGen LLVMX86CodeGen LLVMCParser LLVMIRParser
-##    LLVMTarget LLVMTargetParser
-##    LLVMX86AsmParser LLVMX86TargetMCA LLVMX86Desc LLVMX86AsmPrinter LLVMX86Utils LLVMX86Info LLVMX86Disassembler
 )
 message(STATUS "llvm_libs: ${llvm_libs}")
 target_link_libraries(${PROJECT_NAME} ${llvm_libs})

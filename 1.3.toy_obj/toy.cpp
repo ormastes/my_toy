@@ -21,16 +21,18 @@ llvm::ExitOnError ExitOnErr;
 static std::map<std::string, std::unique_ptr<FunctionPrototypeAST>> FunctionProtos;
 std::unique_ptr<llvm::LLVMContext> TheContext; // contains all the states global to the compiler
 std::unique_ptr<llvm::Module> TheModule{}; // contains functions and global variables //{} to ensure nullpt init
-static std::unique_ptr<llvm::IRBuilder<>> Builder; // ir build keeps track of the current location for inserting new instructions
+std::unique_ptr<llvm::IRBuilder<>> Builder; // ir build keeps track of the current location for inserting new instructions
 static std::map<std::string, llvm::Value*> Named_Values;
+
 
 #include "common.h"
 #include "token.h"
 #include "ast.h"
 #include "ast_code_gen.h"
 #include "parser.h"
-// clang++-16 -I ~/dev/0.my/play_llvm_x86_linux_install/include toy.cpp -o toy
 
+
+// clang++-16 -I ~/dev/0.my/play_llvm_x86_linux_install/include toy.cpp -o toy
 llvm::Function *getFunction(std::string Name) {
   // First, see if the function has already been added to the current module.
   if (auto *F = TheModule->getFunction(Name))
@@ -45,21 +47,15 @@ llvm::Function *getFunction(std::string Name) {
   // If no existing prototype exists, return null.
   return nullptr;
 }
+
 static void bootup_init() {
     variable_bootup_init();
 }
  // keeps track of which values are defined in the current scope
 static void InitializeModule() {
     // Open a new context and module.
-    TheContext = std::make_unique<llvm::LLVMContext>();
-    TheModule = std::make_unique<llvm::Module>(__PROJECT_NAME__, *TheContext);
     variable_InitializeModule();
-    // Create a new builder for the module.
-    Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);
 }
-
-
-
 
 
 
@@ -90,8 +86,6 @@ static void Driver() {
         }
     }
 }
-
-
 
 // Avoid including "llvm-c/Core.h" for compile time, fwd-declare this instead.
 //llvm  extern "C" LLVMContextRef LLVMGetGlobalContext(void);

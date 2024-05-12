@@ -32,4 +32,4 @@ add_subdirectory(1.1.2.toy_repl)
 add_subdirectory(1.2.toy_pass)
 # not working LLVMInitializeX86AsmPrinter is not exist...
 # full build llvm-project or static llink may fix??
-# add_subdirectory(1.3toy_obj)
+add_subdirectory(1.3.toy_obj)
