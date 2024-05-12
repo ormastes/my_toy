@@ -41,7 +41,6 @@ llvm::Function *FunctionImplAST::Codegen() {
     auto &P = *Func_Decl;
     FunctionProtos[Func_Decl->Func_name] = std::move(Func_Decl);
     llvm::Function *TheFunction = getFunction(P.Func_name);
-
     if (TheFunction == 0) return 0;
 
     Named_Values.clear();
@@ -52,7 +51,7 @@ llvm::Function *FunctionImplAST::Codegen() {
     if (llvm::Value *RetVal = Func_Body->Codegen()) {
         Builder->CreateRet(RetVal);
         verifyFunction(*TheFunction);
- 	variable_functionast_codegen();      
+ 	    variable_functionast_codegen(TheFunction);      
         return TheFunction;
     }
     TheFunction->eraseFromParent();

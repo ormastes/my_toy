@@ -18,8 +18,10 @@ void variable_InitializeModule() {
     // Create a new builder for the module.
     Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);
 }
+
 void variable_Handle_Top_Level_Expression() {}
 void variable_Handle_Function_Definition(llvm::Function *function) {}
+void variable_functionast_codegen(llvm::Function *TheFunction) {}
 void variable_post_main() {}
 std::unique_ptr<FunctionPrototypeAST> variable_parse_top_level(SourceLocation CurLoc) {
 	return std::make_unique<FunctionPrototypeAST>(CurLoc, "main", std::vector<std::string>()) ;
