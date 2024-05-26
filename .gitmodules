@@ -1,0 +1,3 @@
+[submodule "1.3.2.toy_risc/llvm-project"]
+	path = 1.3.2.toy_risc/llvm-project
+	url = https://github.com/ormastes/llvm-project.git
