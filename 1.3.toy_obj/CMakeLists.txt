@@ -22,12 +22,27 @@ llvm_map_components_to_libnames(llvm_libs support core irreader
 	all
 	MC
 	TargetParser
+
     X86Disassembler
     X86Info
     X86TargetMCA
     X86AsmParser
     X86CodeGen
     X86Desc
+
+    ARMDisassembler
+    ARMInfo
+    #ARMTargetMCA
+    ARMAsmParser
+    ARMCodeGen
+    ARMDesc
+    
+    RISCVDisassembler
+    RISCVInfo
+    RISCVTargetMCA
+    RISCVAsmParser
+    RISCVCodeGen
+    RISCVDesc
 )
 ## for obj
 ##    ASMParser MCA MCTargetDesc

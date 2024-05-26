@@ -11,8 +11,9 @@ set(CMAKE_CXX_STANDARD 20)
 #SET(CMAKE_C_COMPILER /home/ormastes/dev/install/clang_17_X86_reldeb//bin/clang)
 #SET(CMAKE_CXX_COMPILER /home/ormastes/dev/install/clang_17_X86_reldeb//bin/clang++)
 #SET(CMAKE_ASM_COMPILER /home/ormastes/dev/install/clang_17_X86_reldeb//bin/clang)
-set(CMAKE_PREFIX_PATH /home/ormastes/dev/install/clang_17_X86_reldeb/lib/cmake/llvm)
-
+#set(CMAKE_PREFIX_PATH /home/ormastes/dev/install/clang_17_X86_reldeb/lib/cmake/llvm)
+#set(CMAKE_PREFIX_PATH /home/ormastes/dev/install/clang_17_pgo_riscv_debug/lib/cmake/llvm)
+set(CMAKE_PREFIX_PATH /home/ormastes/dev/install/clang_17_xar_debug/lib/cmake/llvm)
 
 
 find_package(LLVM REQUIRED CONFIG)
