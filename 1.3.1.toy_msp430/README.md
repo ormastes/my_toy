@@ -12,7 +12,34 @@ update llvm/lib/Target/TOYMSP430/CMakeLists.txt
 ```
 add_llvm_component_group(TOYMSP430)
 ```
-
+2. apply 'toymsp430' to llvm\include\llvm\ADT\Triple.h and lib/TargetParser/Triple.cpp
+change source files msp430 to toymsp430
+```
+  \\wsl.localhost\Ubuntu-22.04\home\ormastes\dev\pri\my_toy\1.3.1.toy_msp430\llvm-project\llvm\lib\Target\TOYMSP430\Disassembler\MSP430Disassembler.cpp (1 일치)
+	줄  27: #define DEBUG_TYPE "msp430-disassembler"
+  \\wsl.localhost\Ubuntu-22.04\home\ormastes\dev\pri\my_toy\1.3.1.toy_msp430\llvm-project\llvm\lib\Target\TOYMSP430\AsmParser\MSP430AsmParser.cpp (1 일치)
+	줄  31: #define DEBUG_TYPE "msp430-asm-parser"
+  \\wsl.localhost\Ubuntu-22.04\home\ormastes\dev\pri\my_toy\1.3.1.toy_msp430\llvm-project\llvm\lib\Target\TOYMSP430\MSP430.td (2 일치)
+	줄 43: def : Proc<"msp430",          []>;
+	줄 44: def : Proc<"msp430x",         [FeatureX]>;
+  \\wsl.localhost\Ubuntu-22.04\home\ormastes\dev\pri\my_toy\1.3.1.toy_msp430\llvm-project\llvm\lib\Target\TOYMSP430\TargetInfo\MSP430TargetInfo.cpp (2 일치)
+	줄 19:   RegisterTarget<Triple::msp430> X(getTheMSP430Target(), "msp430",
+  \\wsl.localhost\Ubuntu-22.04\home\ormastes\dev\pri\my_toy\1.3.1.toy_msp430\llvm-project\llvm\lib\Target\TOYMSP430\MSP430ISelDAGToDAG.cpp (1 일치)
+	줄  32: #define DEBUG_TYPE "msp430-isel"
+  \\wsl.localhost\Ubuntu-22.04\home\ormastes\dev\pri\my_toy\1.3.1.toy_msp430\llvm-project\llvm\lib\Target\TOYMSP430\MSP430RegisterInfo.cpp (1 일치)
+	줄  28: #define DEBUG_TYPE "msp430-reg-info"
+  \\wsl.localhost\Ubuntu-22.04\home\ormastes\dev\pri\my_toy\1.3.1.toy_msp430\llvm-project\llvm\lib\Target\TOYMSP430\MSP430Subtarget.cpp (2 일치)
+	줄 19: #define DEBUG_TYPE "msp430-subtarget"
+	줄 48:     CPUName = "msp430";
+  \\wsl.localhost\Ubuntu-22.04\home\ormastes\dev\pri\my_toy\1.3.1.toy_msp430\llvm-project\llvm\lib\Target\TOYMSP430\MSP430BranchSelector.cpp (2 일치)
+	줄  28: #define DEBUG_TYPE "msp430-branch-select"
+	줄  31:     BranchSelectEnabled("msp430-branch-select", cl::Hidden, cl::init(true),
+  \\wsl.localhost\Ubuntu-22.04\home\ormastes\dev\pri\my_toy\1.3.1.toy_msp430\llvm-project\llvm\lib\Target\TOYMSP430\MSP430ISelLowering.cpp (3 일치)
+	줄   37: #define DEBUG_TYPE "msp430-lower"
+	줄   40:   "msp430-no-legal-immediate", cl::Hidden,
+	줄  368: // tests/codegen/msp430/shift-amount-threshold-b.ll
+```
+3. change registers
 
 ## Initial file changes
 
@@ -98,7 +125,7 @@ Triple Triple::getBigEndianArchVariant() const {
   if (!isLittleEndian())
     return T;
   switch (getArch()) {
-    case Triple::toymsp430:
+    ///case Triple::toymsp430:
 	    T.setArch(UnknownArch);
     break;
 ```
