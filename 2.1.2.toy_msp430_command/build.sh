@@ -1,6 +1,6 @@
 cd ../2.0.0.llvm
 cd llvm-project
-git switch toy_msp430
+git switch toy_msp430_new_command
 cd ..
 mkdir build
 cd build
