@@ -1,6 +1,3 @@
-[submodule "1.3.2.toy_riscv/llvm-project"]
-	path = 1.3.2.toy_riscv/llvm-project
-	url = https://github.com/ormastes/llvm-project.git
-[submodule "1.3.1.toy_msp430/llvm-project"]
-	path = 1.3.1.toy_msp430/llvm-project
+[submodule "2.0.0.llvm/llvm-project"]
+	path = 2.0.0.llvm/llvm-project
 	url = https://github.com/ormastes/llvm-project.git
