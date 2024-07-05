@@ -18,13 +18,13 @@ set(LLVM_ALL_TARGETS
 ```
 add
 ```
-TOYMSP430
+TOYTISC
 ```
 
 ### Add architecture in cmake config. llvm\cmake\config-ix.cmake
 ```
-elseif (LLVM_NATIVE_ARCH MATCHES "toymsp430")
-  set(LLVM_NATIVE_ARCH TOYMSP430)
+elseif (LLVM_NATIVE_ARCH MATCHES "toytisc")
+  set(LLVM_NATIVE_ARCH TOYTISC)
 else ()
   message(FATAL_ERROR "Unknown architecture ${LLVM_NATIVE_ARCH}")
 endif ()
@@ -35,55 +35,55 @@ endif ()
 ```
 public:
   enum ArchType {
-	  toymsp430,     
+	  toytisc,     
 ```
 
 ### Add to triple.cpp on lib/TargetParser/Triple.cpp
 ```
 StringRef Triple::getArchTypeName(ArchType Kind) {
   switch (Kind) {
-    case toymsp430:     return "toymsp430";
+    case toytisc:     return "toytisc";
 ```
 ```
 StringRef Triple::getArchTypePrefix(ArchType Kind) {
   switch (Kind) {
   default:
     return StringRef();
-  case toymsp430:  return "toymsp430";
+  case toytisc:  return "toytisc";
 ```
 ```
 Triple::ArchType Triple::getArchTypeForLLVMName(StringRef Name) {
   Triple::ArchType BPFArch(parseBPFArch(Name));
   return StringSwitch<Triple::ArchType>(Name)
-    .Case("toymsp430", toymsp430)
+    .Case("toytisc", toytisc)
 ```
 ```
 static Triple::ArchType parseArch(StringRef ArchName) {
   auto AT = StringSwitch<Triple::ArchType>(ArchName)
-    .Case("toymsp430", Triple::toymsp430)
+    .Case("toytisc", Triple::toytisc)
 ```
 static Triple::ObjectFormatType getDefaultFormat(const Triple &T) {
   switch (T.getArch()) {
-    case Triple::toymsp430:
+    case Triple::toytisc:
 	    return Triple::ELF;
 ```
 ```
 static unsigned getArchPointerBitWidth(llvm::Triple::ArchType Arch) {
   switch (Arch) {
-  case llvm::Triple::toymsp430:
+  case llvm::Triple::toytisc:
 	  return 16;
 ```
 ```
 Triple Triple::get32BitArchVariant() const {
   Triple T(*this);
   switch (getArch()) {
-	case Triple::toymsp430:
+	case Triple::toytisc:
      T.setArch(Triple::UnknownArch); break;
 ```
 Triple Triple::get64BitArchVariant() const {
   Triple T(*this);
   switch (getArch()) {
-	case Triple::toymsp430:
+	case Triple::toytisc:
      T.setArch(Triple::UnknownArch); break;
 ```
 ```
@@ -93,14 +93,14 @@ Triple Triple::getBigEndianArchVariant() const {
   if (!isLittleEndian())
     return T;
   switch (getArch()) {
-    ///case Triple::toymsp430:
+    ///case Triple::toytisc:
 	    T.setArch(UnknownArch);
     break;
 ```
 ```
 bool Triple::isLittleEndian() const {
   switch (getArch()) {
-    case Triple::toymsp430:
+    case Triple::toytisc:
 
 		return true;
 ```
